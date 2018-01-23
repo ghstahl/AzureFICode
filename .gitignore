@@ -2,11 +2,6 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/AzureChaos/AzureChaos.Tests/obj/Debug
-/AzureChaos/.vs
-/AzureChaos/AzureChaos/obj/Debug
+/.vs
 /AzureChaos/obj/Debug
 /AzureChaos.Tests/obj/Debug
-/packages/Microsoft.Net.Compilers.2.1.0/tools/Microsoft.Build.Tasks.CodeAnalysis.dll
-/.vs/config/applicationhost.config
-/.vs/AzureChaos/v15

@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{9883C5F1-A992-4309-A884-25F5F4E92C37}</ProjectGuid>
+    <ProjectGuid>{7477113A-4783-463A-987B-527413893D36}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>AzureChaos.Tests</RootNamespace>
@@ -64,7 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AzureChaos\AzureChaos.csproj">
-      <Project>{B01C7AAF-EF6A-4091-8E1D-A5D68F7282BD}</Project>
+      <Project>{7FF42508-5C57-486D-BA5A-2E15608C4D21}</Project>
       <Name>AzureChaos</Name>
     </ProjectReference>
   </ItemGroup>
