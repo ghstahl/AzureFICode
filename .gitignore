@@ -5,3 +5,5 @@
 /.vs
 /AzureChaos/obj/Debug
 /AzureChaos.Tests/obj/Debug
+/AzureChaos/bin
+/AzureChaos.Tests/bin
