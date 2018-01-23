@@ -1,0 +1,7 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/AzureChaos/AzureChaos.Tests/obj/Debug
+/AzureChaos/.vs
+/AzureChaos/AzureChaos/obj/Debug
