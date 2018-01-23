@@ -7,3 +7,6 @@
 /AzureChaos/AzureChaos/obj/Debug
 /AzureChaos/obj/Debug
 /AzureChaos.Tests/obj/Debug
+/packages/Microsoft.Net.Compilers.2.1.0/tools/Microsoft.Build.Tasks.CodeAnalysis.dll
+/.vs/config/applicationhost.config
+/.vs/AzureChaos/v15
