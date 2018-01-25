@@ -4,9 +4,8 @@
 
 /.vs
 /AzureChaos/bin/
-/AzureChaos/obj/Debug
-/AzureChaos.Tests/obj/Debug
-/AzureChaos/bin
-/AzureChaos.Tests/bin
-/AzureChaos.Core/obj
-/AzureChaos.Core/bin/Debug/netstandard2.0
+/AzureChaos.Tests/bin/
+/AzureChaos/obj/
+/AzureChaos.Tests/obj/
+/AzureChaos.Core/obj/
+/AzureChaos.Core/bin/
