@@ -7,3 +7,5 @@
 /AzureChaos.Tests/obj/Debug
 /AzureChaos/bin
 /AzureChaos.Tests/bin
+/AzureChaos.Core/obj
+/AzureChaos.Core/bin/Debug/netstandard2.0
