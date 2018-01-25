@@ -9,3 +9,6 @@
 /AzureChaos.Tests/obj/
 /AzureChaos.Core/obj/
 /AzureChaos.Core/bin/
+/AzureChaos.Tests/AzureChaos.Tests.csproj.user
+/AzureChaos/AzureChaos.csproj.user
+/AzureChaos.Core/AzureChaos.Core.csproj.user
