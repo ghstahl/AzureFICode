@@ -5,6 +5,8 @@
         Scheduled,
         Started,
         Completed,
-        Failed
+        Failed,
+        Stopped,
+        Running
     }
 }
