@@ -1,6 +1,6 @@
 ﻿namespace AzureChaos.Enums
 {
-    public enum JobState
+    public enum State
     {
         Scheduled,
         Started,
