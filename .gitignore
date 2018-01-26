@@ -9,3 +9,4 @@
 /AzureChaos.Tests/bin
 /AzureChaos.Core/obj
 /AzureChaos.Core/bin/Debug/netstandard2.0
+/AzureChaos.Tests/AzureChaos.Tests.csproj.user
