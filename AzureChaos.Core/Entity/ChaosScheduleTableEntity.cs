@@ -40,7 +40,7 @@ namespace AzureChaos.Entity
         public DateTime? ChaosEndDate { get; set; }
 
         /// <summary>Chaos Job state</summary>
-        public JobState State { get; set; }
+        public State State { get; set; }
 
         /// <summary>Status of the chaos job, whether its success or failure.</summary>
         public bool Status { get; set; }
