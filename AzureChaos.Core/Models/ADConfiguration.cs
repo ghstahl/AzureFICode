@@ -11,6 +11,7 @@ namespace AzureChaos.Models
     public class ADConfiguration
     {
         /// <summary>For now, keeping the configuration information here.</summary>
+        /// will be adding the storage account details in the azure function and will provide azure function
         public ADConfiguration()
         {
             ResourceGroup = "Chaos_Monkey_RG";

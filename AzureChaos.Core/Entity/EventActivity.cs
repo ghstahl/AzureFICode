@@ -15,7 +15,7 @@ namespace AzureChaos.Entity
 
         [Required]
         /// <summary>The Resource type. ex. Load balancers, Stand alone vm's, Network interface, Virtual Network etc...</summary>
-        public string ResourceType { get; set; }
+        public ResourceType ResourceType { get; set; }
 
         /// <summary>The Resource name.</summary>
         public string Resource { get; set; }
@@ -43,5 +43,8 @@ namespace AzureChaos.Entity
 
         /// <summary>Chaos type on the resource</summary>
         public ActionType EventType { get; set; }
+
+        /// <summary>Error message if anything occured on the time of execution.</summary>
+        public string Error { get; set; }
     }
 }
