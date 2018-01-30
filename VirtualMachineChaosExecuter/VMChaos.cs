@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace VirtualMachineChaosExecuter
     {
         /// <summary>Azure Configuration.</summary>
         private static ADConfiguration config = new ADConfiguration();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider("st5ce22456", "KoCL+uvZZCpsuROXas0cGdm8jJCYurb5OiaNNhlNTzzl0oBhjoni72gryV70YwaO/sYXexhzG0ZcexQWhPTmdA==");
         private static string eventTableName = "dummytablename";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
@@ -38,16 +39,18 @@ namespace VirtualMachineChaosExecuter
             log.Info($"VM Chaos trigger function processed a request. RequestUri= { req.RequestUri }");
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<InputObject>();
-            if (data == null)
+            ActionType action;
+            if (data == null || !Enum.TryParse(data?.Action.ToString(), out action) || string.IsNullOrWhiteSpace(data?.ResourceName))
             {
-                return req.CreateResponse(HttpStatusCode.BadRequest, "Action and Resource name on the body");
+                return req.CreateResponse(HttpStatusCode.BadRequest, "Invalid Action/Resource");
             }
 
-            EventActivity eventActivity = new EventActivity(ResourceType.VirtualMachines.ToString(), data?.ResourceName);
+            EventActivity eventActivity = new EventActivity(data.ResourceName);
             try
             {
-                var azure = AzureClient.GetAzure(config);
-                var virtualMachine = await azure.VirtualMachines.GetByResourceGroupAsync(config.ResourceGroup, data?.ResourceName);
+                IVirtualMachine virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data.ResourceName);
+                ///GetByResourceGroup is throwing exception on the virtual machine. using alternative method to get the resources.
+                //    IVirtualMachine virtualMachine = azure.VirtualMachines.GetByResourceGroup(config.ResourceGroup, data?.ResourceName);
                 var storageAccount = storageProvider.CreateStorageAccountIfNotExist(config);
                 if (storageAccount == null)
                 {
@@ -55,59 +58,75 @@ namespace VirtualMachineChaosExecuter
                 }
 
                 log.Info($"VM Chaos trigger function Processing the action= " + data?.Action);
-                Task vmTask = Task.Run(async () =>
+                eventActivity.InitialState = virtualMachine.PowerState.Value;
+                eventActivity.Resource = data.ResourceName;
+                eventActivity.ResourceType = ResourceType.VirtualMachines.ToString();
+                eventActivity.ResourceGroup = config.ResourceGroup;
+                eventActivity.EventType = data.Action.ToString();
+                eventActivity.EventStateDate = DateTime.UtcNow;
+                eventActivity.EntryDate = DateTime.UtcNow;
+                storageProvider.InsertEntity(eventActivity, eventTableName);
+                switch (data.Action)
                 {
-                    State initialState;
-                    eventActivity.InitialState = Enum.TryParse(virtualMachine.PowerState.ToString(), out initialState) ? initialState : State.Unknown;
-                    eventActivity.Resource = data?.ResourceName;
-                    eventActivity.ResourceType = ResourceType.VirtualMachines;
-                    eventActivity.ResourceGroup = config.ResourceGroup;
-                    eventActivity.EventType = data?.Action;
-                    eventActivity.EventStateDate = DateTime.UtcNow;
-                    eventActivity.EntryDate = DateTime.UtcNow;
-                    switch (data?.Action)
-                    {
-                        case ActionType.Start:
-                            if (virtualMachine.PowerState != PowerState.Running && virtualMachine.PowerState != PowerState.Starting)
-                            {
-                                await virtualMachine.StartAsync();
-                            }
+                    case ActionType.Start:
+                        if (virtualMachine.PowerState != PowerState.Running && virtualMachine.PowerState != PowerState.Starting)
+                        {
+                            virtualMachine.Start();
+                        }
 
-                            break;
-                        case ActionType.PowerOff:
-                            if (virtualMachine.PowerState != PowerState.Stopping && virtualMachine.PowerState != PowerState.Stopped)
-                            {
-                                await virtualMachine.PowerOffAsync();
-                            }
+                        break;
+                    case ActionType.PowerOff:
+                    case ActionType.Stop:
+                        if (virtualMachine.PowerState != PowerState.Stopping && virtualMachine.PowerState != PowerState.Stopped)
+                        {
+                            virtualMachine.PowerOff();
+                        }
 
-                            break;
-                        case ActionType.Restart:
-                            await virtualMachine.RestartAsync();
-                            break;
-                        default:
-                            break;
-                    }
-                });
-
-                if (vmTask.IsCompleted)
-                {
-                    eventActivity.EntryDate = DateTime.UtcNow;
-                    virtualMachine = await azure.VirtualMachines.GetByResourceGroupAsync(config.ResourceGroup, data?.ResourceName);
-                    State finalState;
-                    eventActivity.FinalState = Enum.TryParse(virtualMachine.PowerState.ToString(), out finalState) ? finalState : State.Unknown;
+                        break;
                 }
+
+                virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data?.ResourceName);
+                EventActivity result = await storageProvider.GetSingleEntity<EventActivity>(eventActivity.PartitionKey, eventActivity.RowKey, eventTableName);
+                if (result != null)
+                {
+                    result.EventCompletedDate = DateTime.UtcNow;
+                    result.FinalState = virtualMachine.PowerState.Value;
+                    result.Error = virtualMachine.PowerState.Value.Equals(result.InitialState, StringComparison.InvariantCultureIgnoreCase) ? "Couldnot perform any chaos, since action type and initial state are same": string.Empty;
+                    await storageProvider.InsertOrMerge<EventActivity>(result, eventTableName);
+                }
+
+                return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
+                storageProvider.InsertEntity(eventActivity, eventTableName);
                 log.Error($"VM Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
+        }
 
-            storageProvider.InsertEntity(eventActivity, eventTableName);
-            return data == null
-                    ? req.CreateResponse(HttpStatusCode.BadRequest, "Missing Action and Resource name on the body")
-                    : req.CreateResponse(HttpStatusCode.OK);
+        /// <summary>Get the virtual machine.</summary>
+        /// <param name="config">The config</param>
+        /// <param name="resourceGroup">The Resource Group.</param>
+        /// <param name="resourceName">The Resource Name</param>
+        /// <returns>Returns the virtual machine.</returns>
+        private static IVirtualMachine GetVirtualMachine(ADConfiguration config, string resourceGroup, string resourceName)
+        {
+            var azure = AzureClient.GetAzure(config);
+            var virtualMachines = azure.VirtualMachines.ListByResourceGroup(config.ResourceGroup);
+            if (virtualMachines == null || !virtualMachines.Any())
+            {
+                return null;
+            }
+
+            var virtualMachine = virtualMachines.FirstOrDefault(x => x.Name.Equals(resourceName, StringComparison.InvariantCultureIgnoreCase));
+            if (virtualMachine == null)
+            {
+                return null;
+            }
+
+            return virtualMachine;
         }
     }
 }
