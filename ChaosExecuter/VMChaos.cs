@@ -20,7 +20,7 @@ namespace VirtualMachineChaosExecuter
     {
         /// <summary>Azure Configuration.</summary>
         private static ADConfiguration config = new ADConfiguration();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider("st5ce22456", "KoCL+uvZZCpsuROXas0cGdm8jJCYurb5OiaNNhlNTzzl0oBhjoni72gryV70YwaO/sYXexhzG0ZcexQWhPTmdA==");
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
         private static string eventTableName = "dummytablename";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
@@ -28,7 +28,7 @@ namespace VirtualMachineChaosExecuter
         /// <param name="log">The trace writer.</param>
         /// <returns>Returns the http response message.</returns>
         [FunctionName("vmchaos")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function,"post", Route = "CreateChaos")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateChaos")]HttpRequestMessage req, TraceWriter log)
         {
             if (req == null || req.Content == null)
             {
@@ -49,10 +49,7 @@ namespace VirtualMachineChaosExecuter
             try
             {
                 IVirtualMachine virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data.ResourceName);
-                ///GetByResourceGroup is throwing exception on the virtual machine. using alternative method to get the resources.
-                //    IVirtualMachine virtualMachine = azure.VirtualMachines.GetByResourceGroup(config.ResourceGroup, data?.ResourceName);
-                var storageAccount = storageProvider.CreateStorageAccountIfNotExist(config);
-                if (storageAccount == null)
+                if (storageProvider.storageAccount == null)
                 {
                     return req.CreateResponse(HttpStatusCode.InternalServerError, "storage account not created/not existed");
                 }
@@ -65,7 +62,6 @@ namespace VirtualMachineChaosExecuter
                 eventActivity.EventType = data.Action.ToString();
                 eventActivity.EventStateDate = DateTime.UtcNow;
                 eventActivity.EntryDate = DateTime.UtcNow;
-                storageProvider.InsertEntity(eventActivity, eventTableName);
                 switch (data.Action)
                 {
                     case ActionType.Start:
@@ -86,21 +82,20 @@ namespace VirtualMachineChaosExecuter
                 }
 
                 virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data?.ResourceName);
-                EventActivityEntity result = await storageProvider.GetSingleEntity<EventActivityEntity>(eventActivity.PartitionKey, eventActivity.RowKey, eventTableName);
-                if (result != null)
+                if (virtualMachine != null)
                 {
-                    result.EventCompletedDate = DateTime.UtcNow;
-                    result.FinalState = virtualMachine.PowerState.Value;
-                    result.Error = virtualMachine.PowerState.Value.Equals(result.InitialState, StringComparison.InvariantCultureIgnoreCase) ? "Couldnot perform any chaos, since action type and initial state are same": string.Empty;
-                    await storageProvider.InsertOrMerge<EventActivityEntity>(result, eventTableName);
+                    eventActivity.EventCompletedDate = DateTime.UtcNow;
+                    eventActivity.FinalState = virtualMachine.PowerState.Value;
+                    eventActivity.Error = virtualMachine.PowerState.Value.Equals(eventActivity.InitialState, StringComparison.InvariantCultureIgnoreCase) ? "Couldnot perform any chaos, since action type and initial state are same" : string.Empty;
                 }
 
+                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
                 return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
-                storageProvider.InsertEntity(eventActivity, eventTableName);
+                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
                 log.Error($"VM Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
