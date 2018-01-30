@@ -13,10 +13,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace VirtualMachineChaosExecuter
+namespace ChaosExecuter.Executer
 {
-    /// <summary>Virtual Machine chaos executer<see cref="VMChaos.cs"/></summary>
-    public static class VMChaos
+    /// <summary>Virtual Machine chaos executer<see cref="VirtualMachineExecuter.cs"/></summary>
+    public static class VirtualMachineExecuter
     {
         /// <summary>Azure Configuration.</summary>
         private static ADConfiguration config = new ADConfiguration();

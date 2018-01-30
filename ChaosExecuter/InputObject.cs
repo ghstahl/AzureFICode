@@ -1,6 +1,6 @@
 ﻿using AzureChaos.Enums;
 
-namespace VirtualMachineChaosExecuter
+namespace ChaosExecuter
 {
     /// <summary>The input object for the chaos executer.</summary>
     public class InputObject
