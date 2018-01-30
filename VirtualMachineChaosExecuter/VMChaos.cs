@@ -45,7 +45,7 @@ namespace VirtualMachineChaosExecuter
                 return req.CreateResponse(HttpStatusCode.BadRequest, "Invalid Action/Resource");
             }
 
-            EventActivity eventActivity = new EventActivity(data.ResourceName);
+            EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceName);
             try
             {
                 IVirtualMachine virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data.ResourceName);
@@ -86,13 +86,13 @@ namespace VirtualMachineChaosExecuter
                 }
 
                 virtualMachine = GetVirtualMachine(config, config.ResourceGroup, data?.ResourceName);
-                EventActivity result = await storageProvider.GetSingleEntity<EventActivity>(eventActivity.PartitionKey, eventActivity.RowKey, eventTableName);
+                EventActivityEntity result = await storageProvider.GetSingleEntity<EventActivityEntity>(eventActivity.PartitionKey, eventActivity.RowKey, eventTableName);
                 if (result != null)
                 {
                     result.EventCompletedDate = DateTime.UtcNow;
                     result.FinalState = virtualMachine.PowerState.Value;
                     result.Error = virtualMachine.PowerState.Value.Equals(result.InitialState, StringComparison.InvariantCultureIgnoreCase) ? "Couldnot perform any chaos, since action type and initial state are same": string.Empty;
-                    await storageProvider.InsertOrMerge<EventActivity>(result, eventTableName);
+                    await storageProvider.InsertOrMerge<EventActivityEntity>(result, eventTableName);
                 }
 
                 return req.CreateResponse(HttpStatusCode.OK);

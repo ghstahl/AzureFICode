@@ -6,13 +6,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AzureChaos.Entity
 {
-    public class EventActivity : TableEntity
+    public class EventActivityEntity : TableEntity
     {
-        public EventActivity()
+        public EventActivityEntity()
         {
 
         }
-        public EventActivity(string resourceName, string rowKey = "")
+        public EventActivityEntity(string resourceName, string rowKey = "")
         {
             this.PartitionKey = resourceName;
             this.RowKey = string.IsNullOrWhiteSpace(rowKey) ? Guid.NewGuid().ToString() : rowKey;
