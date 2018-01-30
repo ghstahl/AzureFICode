@@ -17,45 +17,15 @@ namespace AzureChaos.Providers
     {
         private string storageAccountName = "st5ce22456";
         private string storageAccountKey = "KoCL+uvZZCpsuROXas0cGdm8jJCYurb5OiaNNhlNTzzl0oBhjoni72gryV70YwaO/sYXexhzG0ZcexQWhPTmdA==";
-        private CloudStorageAccount storageAccount;
-        private CloudTableClient tableClient;
-        private CloudTable table;
+        public CloudStorageAccount storageAccount;
+        public CloudTableClient tableClient;
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        public StorageAccountProvider() { }
-        public StorageAccountProvider(string storageAccountName, string storageAccountKey)
+        public StorageAccountProvider(ADConfiguration config)
         {
-            this.storageAccountName = storageAccountName;
-            this.storageAccountKey = storageAccountKey;
-            this.storageAccount = new CloudStorageAccount(new StorageCredentials(storageAccountName, storageAccountKey), true);
+            this.storageAccount = (string.IsNullOrWhiteSpace(storageAccountName) || string.IsNullOrWhiteSpace(storageAccountKey)) ? CreateStorageAccount(config) : new CloudStorageAccount(new StorageCredentials(storageAccountName, storageAccountKey), true);
             this.tableClient = this.storageAccount.CreateCloudTableClient();
         }
-
-        public CloudStorageAccount CreateStorageAccountIfNotExist(ADConfiguration config)
-        {
-            if (string.IsNullOrWhiteSpace(this.storageAccountName) || string.IsNullOrWhiteSpace(this.storageAccountKey))
-            {
-                storageAccount = CreateStorageAccount(config);
-            }
-            else
-            {
-                string storageConnectionString = string.Format(StorageConStringFormat, this.storageAccountName, this.storageAccountKey);
-                var account = CloudStorageAccount.Parse(storageConnectionString);
-                if (account == null)
-                {
-                    storageAccount = CreateStorageAccount(config);
-                }
-                else
-                {
-                    this.storageAccount = account;
-                }
-            }
-
-            this.tableClient = this.storageAccount.CreateCloudTableClient();
-            return storageAccount;
-        }
-
-        
 
         /// <summary>Create Storage Account.</summary>
         /// <param name="config">The Azure config.</param>
@@ -78,9 +48,57 @@ namespace AzureChaos.Providers
                 + ";AccountKey=" + this.storageAccountKey
                 + ";EndpointSuffix=core.windows.net";
 
-            var account = CloudStorageAccount.Parse(storageConnectionString);
-            return account;
+            return CloudStorageAccount.Parse(storageConnectionString);
+        }
 
+        /// <summary>Create new table for given storage account.</summary>
+        /// <param name="tableName">The table name.</param>
+        public CloudTable CreateOrGetTable(string tableName)
+        {
+            try
+            {
+                // Retrieve a reference to the table.
+                CloudTable table = this.tableClient.GetTableReference(tableName);
+
+                // Create the table if it doesn't exist.
+                table.CreateIfNotExistsAsync();
+                return table;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>Get the single entity</summary>
+        /// <typeparam name="T">Type of the entity</typeparam>
+        /// <param name="partitionKey">The partition key</param>
+        /// <param name="rowKey">The rowkey</param>
+        /// <param name="tableName">The table name</param>
+        /// <returns>Returns the single entity of the type T.</returns>
+        public async Task<T> GetSingleEntity<T>(string partitionKey, string rowKey, string tableName) where T : ITableEntity
+        {
+            try
+            {
+                var table = CreateOrGetTable(tableName);
+                if (table == null)
+                {
+                    return default(T);
+                }
+
+                // Create a retrieve operation for the entity
+                TableOperation retrieveOperation = TableOperation.Retrieve<T>(partitionKey, rowKey);
+
+                // Execute the operation.
+                TableResult retrievedResult = await table.ExecuteAsync(retrieveOperation);
+
+                // Return the result.
+                return (T)retrievedResult.Result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         /// <summary>Retrieve data from the storage table.</summary>
@@ -88,7 +106,7 @@ namespace AzureChaos.Providers
         /// <param name="tableQuery">The table query.</param>
         /// <param name="tableName">The table name.</param>
         /// <returns>Returns the Enumerable typed data.</returns>
-        public async Task<IEnumerable<T>> RetrieveTableData<T>(TableQuery<T> tableQuery, string tableName) where T : ITableEntity, new()
+        public async Task<IEnumerable<T>> GetEntities<T>(TableQuery<T> tableQuery, string tableName) where T : ITableEntity, new()
         {
             if (tableClient == null)
             {
@@ -124,30 +142,6 @@ namespace AzureChaos.Providers
             }
         }
 
-        /// <summary>Create new table for given storage account.</summary>
-        /// <param name="tableName">The table name.</param>
-        public CloudTable CreateTable(string tableName)
-        {
-            if (tableClient == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                // Retrieve a reference to the table.
-                CloudTable table = tableClient.GetTableReference(tableName);
-
-                // Create the table if it doesn't exist.
-                table.CreateIfNotExistsAsync();
-                return table;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
         /// <summary>Insert the single entity to table.</summary>
         /// <typeparam name="T">The entity type.</typeparam>
         /// <param name="entity">The entity.</param>
@@ -156,7 +150,7 @@ namespace AzureChaos.Providers
         {
             try
             {
-                var table = CreateTable(tableName);
+                var table = CreateOrGetTable(tableName);
                 if (table == null)
                 {
                     return;
@@ -171,67 +165,6 @@ namespace AzureChaos.Providers
             }
         }
 
-        /// <summary>Insert the multiple entities as a batch.</summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entities">List of entities.</param>
-        /// <param name="tableName">Table name.</param>
-        public async Task InsertEntities<T>(List<T> entities, string tableName) where T : ITableEntity
-        {
-            try
-            {
-                var table = CreateTable(tableName);
-                if (table == null || entities == null || !entities.Any())
-                {
-                    return;
-                }
-
-                TableBatchOperation batchOperation = new TableBatchOperation();
-                foreach (var entity in entities)
-                {
-                    batchOperation.Insert(entity);
-                }
-
-                // insert the multiple entities as batch
-                await table.ExecuteBatchAsync(batchOperation);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-        
-
-        /// <summary>Get the single entity</summary>
-        /// <typeparam name="T">Type of the entity</typeparam>
-        /// <param name="partitionKey">The partition key</param>
-        /// <param name="rowKey">The rowkey</param>
-        /// <param name="tableName">The table name</param>
-        /// <returns>Returns the single entity of the type T.</returns>
-        public async Task<T> GetSingleEntity<T>(string partitionKey, string rowKey, string tableName) where T : ITableEntity
-        {
-            try
-            {
-                var table = CreateTable(tableName);
-                if (table == null)
-                {
-                    return default(T);
-                }
-                
-                // Create a retrieve operation for the entity
-                TableOperation retrieveOperation = TableOperation.Retrieve<T>(partitionKey, rowKey);
-
-                // Execute the operation.
-                TableResult retrievedResult = await table.ExecuteAsync(retrieveOperation);
-
-                // Return the result.
-                return (T)retrievedResult.Result;
-            }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
-        }
-
         /// <summary>Insert or merge the entity into the table</summary>
         /// <typeparam name="T">Type of the Entity</typeparam>
         /// <param name="entity">The Entity</param>
@@ -241,7 +174,7 @@ namespace AzureChaos.Providers
         {
             try
             {
-                var table = CreateTable(tableName);
+                var table = CreateOrGetTable(tableName);
                 if (table == null)
                 {
                     return;

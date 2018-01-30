@@ -18,9 +18,9 @@ namespace VirtualMachineChaosExecuter
     public static class ResourceGroupCrawler
     {
         private static ADConfiguration config = new ADConfiguration();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
-        private static CloudTableClient tableClient = storageProvider.CreateStorageAccountIfNotExist(config).CreateCloudTableClient();
-        private static CloudTable table = tableClient.GetTableReference("ResourceGroupTable");
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
+        private static CloudTableClient tableClient = storageProvider.tableClient;
+        private static CloudTable table = storageProvider.CreateOrGetTable("ResourceGroupTable");
         private static TableBatchOperation batchOperation = new TableBatchOperation();
 
         [FunctionName("ResourceGroupCrawler")]
@@ -40,7 +40,7 @@ namespace VirtualMachineChaosExecuter
             try
             {
                 var azure_client = AzureClient.GetAzure(config);
-                var resourceGroups = azure_client.ResourceGroups.List();                
+                var resourceGroups = azure_client.ResourceGroups.List();
                 foreach (var resourceGroup in resourceGroups)
                 {
                     ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("CrawlRGs", Guid.NewGuid().ToString());
