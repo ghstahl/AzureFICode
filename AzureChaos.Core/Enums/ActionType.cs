@@ -9,7 +9,10 @@
         /// <summary>Start action for the Resource</summary>
         Start,
 
-        /// <summary>PowerOff/Stop action for the Resource</summary>
+        /// <summary>Stop action for the Resource</summary>
+        Stop,
+
+        /// <summary>PowerOff action for the Resource</summary>
         PowerOff,
 
         /// <summary>Deallocate action for the Resource (for now its particular to VM)</summary>
