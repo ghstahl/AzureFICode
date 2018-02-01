@@ -48,7 +48,7 @@ namespace ChaosExecuter.Crawler
                     {
                         resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
                         //resourceGroupCrawlerResponseEntity.EventType = data?.Action;
-                        resourceGroupCrawlerResponseEntity.Id = resourceGroup.Id;
+                        resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
                         resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
                         resourceGroupCrawlerResponseEntity.ResourceGroupName = resourceGroup.Name;
                         batchOperation.Insert(resourceGroupCrawlerResponseEntity);

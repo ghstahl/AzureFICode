@@ -12,9 +12,9 @@ namespace AzureChaos.Entity
         {
 
         }
-        public EventActivityEntity(string resourceName, string rowKey = "")
+        public EventActivityEntity(string partitionKey, string rowKey = "")
         {
-            this.PartitionKey = resourceName;
+            this.PartitionKey = partitionKey;
             this.RowKey = string.IsNullOrWhiteSpace(rowKey) ? Guid.NewGuid().ToString() : rowKey;
         }
 
@@ -40,6 +40,9 @@ namespace AzureChaos.Entity
         /// <summary>Event completed date time.</summary>
         public DateTime? EventCompletedDate { get; set; }
 
+        /// <summary>Status Of the operation.</summary>
+        public string Status { get; set; }
+
         /// <summary>Initial State of the resource</summary>
         public string InitialState { get; set; }
 
@@ -48,6 +51,9 @@ namespace AzureChaos.Entity
 
         /// <summary>Chaos type on the resource</summary>
         public string EventType { get; set; }
+
+        /// <summary>Error message if anything occured on the time of execution.</summary>
+        public string Warning { get; set; }
 
         /// <summary>Error message if anything occured on the time of execution.</summary>
         public string Error { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace AzureChaos.Enums
 {
-    public enum State
+    public enum Status
     {
         Unknown = 0,
         Scheduled,
