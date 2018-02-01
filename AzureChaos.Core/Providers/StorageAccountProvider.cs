@@ -57,6 +57,11 @@ namespace AzureChaos.Providers
         {
             try
             {
+                if(this.tableClient == null)
+                {
+                    throw new ArgumentNullException("Table client is null");
+                }
+
                 // Retrieve a reference to the table.
                 CloudTable table = this.tableClient.GetTableReference(tableName);
 
