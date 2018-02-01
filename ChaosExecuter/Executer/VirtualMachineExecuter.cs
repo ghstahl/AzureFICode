@@ -20,6 +20,7 @@ namespace ChaosExecuter.Executer
     {
         /// <summary>Azure Configuration.</summary>
         private static ADConfiguration config = new ADConfiguration();
+
         private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
         private static string eventTableName = "dummytablename";
 
@@ -71,6 +72,7 @@ namespace ChaosExecuter.Executer
                         }
 
                         break;
+
                     case ActionType.PowerOff:
                     case ActionType.Stop:
                         if (virtualMachine.PowerState != PowerState.Stopping && virtualMachine.PowerState != PowerState.Stopped)
@@ -116,10 +118,10 @@ namespace ChaosExecuter.Executer
             }
 
             var virtualMachine = virtualMachines.FirstOrDefault(x => x.Name.Equals(resourceName, StringComparison.InvariantCultureIgnoreCase));
-            if (virtualMachine == null)
-            {
-                return null;
-            }
+            //if (virtualMachine == null)
+            //{
+            //    return null;
+            //}
 
             return virtualMachine;
         }

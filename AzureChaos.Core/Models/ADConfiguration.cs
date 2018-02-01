@@ -1,8 +1,12 @@
-﻿using AzureChaos.Enums;
+﻿using AzureChaos.Core.AzureClient;
+using AzureChaos.Enums;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text;
 
 namespace AzureChaos.Models
 {
@@ -14,12 +18,13 @@ namespace AzureChaos.Models
         /// will be adding the storage account details in the azure function and will provide azure function
         public ADConfiguration()
         {
+            GlobalConfig config = JsonConvert.DeserializeObject<GlobalConfig>(ExecuteGetWebRequest("https://cmonkeylogs.blob.core.windows.net/configs/globalconfig.json"));
             ResourceGroup = "Chaos_Monkey_RG";
-            SubscriptionId = "470546b8-4d7f-4c0e-ae30-489e29c7cb43";
-            TenantId = "99b5d273-16d0-460f-8d7a-fa3cadd3913a";
+            SubscriptionId = config.subscription;
+            TenantId = config.tenant;
             Region = "EastUS";
-            ClientId = "f7ef7b09-6213-4b58-a207-7a90df389822";
-            ClientSecret = "NDC93m7tV7/F6NbCX3gfbqSVeHK3DtxS+ggX11hbHKk=";
+            ClientId = config.client;
+            ClientSecret = config.key;
         }
 
         /// <summary>Azure Authentication type i.e. Certificate based, credential based</summary>
@@ -91,6 +96,27 @@ namespace AzureChaos.Models
 
                 return resources.Any() ? resources.ToList() : null;
             }
+        }
+        private static string ExecuteGetWebRequest(string webReqURL)
+        {
+            string result = string.Empty;
+            try
+            {
+                HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(webReqURL);
+                httpWebRequest.Proxy = null;
+                httpWebRequest.Method = WebRequestMethods.Http.Get;
+                HttpWebResponse response = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (Stream stream = response.GetResponseStream())
+                {
+                    StreamReader reader = new StreamReader(stream, Encoding.UTF8, true);
+                    result = reader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            return result;
         }
     }
 }
