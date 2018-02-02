@@ -25,6 +25,11 @@ namespace AzureChaos.Models
             Region = "EastUS";
             ClientId = config.client;
             ClientSecret = config.key;
+            /*SubscriptionId = "470546b8-4d7f-4c0e-ae30-489e29c7cb43";
+            TenantId = "99b5d273-16d0-460f-8d7a-fa3cadd3913a";
+            Region = "";
+            ClientId = "f7ef7b09-6213-4b58-a207-7a90df389822";
+            ClientSecret = "NDC93m7tV7/F6NbCX3gfbqSVeHK3DtxS+ggX11hbHKk=";*/
         }
 
         /// <summary>Azure Authentication type i.e. Certificate based, credential based</summary>
@@ -67,36 +72,6 @@ namespace AzureChaos.Models
         [JsonProperty("excludedresourcetype")]
         public string ExcludedResourceType { get; set; }
 
-        [JsonIgnore]
-        public List<ResourceType> ExcludeResourceTypeList
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(ExcludedResourceType))
-                {
-                    return null;
-                }
-
-                var resourceTypeList = ExcludedResourceType.Split(',');
-                if (!resourceTypeList.Any())
-                {
-                    return null;
-                }
-
-                var resources = resourceTypeList.Select(x =>
-                {
-                    ResourceType type;
-                    if (Enum.TryParse(x, out type))
-                    {
-                        return type;
-                    }
-
-                    return type;
-                }).Where(x => x != ResourceType.Unknown);
-
-                return resources.Any() ? resources.ToList() : null;
-            }
-        }
         private static string ExecuteGetWebRequest(string webReqURL)
         {
             string result = string.Empty;

@@ -9,6 +9,7 @@ using AzureChaos.Entity;
 using AzureChaos.Enums;
 using AzureChaos.Models;
 using AzureChaos.Providers;
+using ChaosExecuter.Helper;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
@@ -21,11 +22,11 @@ namespace ChaosExecuter.Crawler
         private static ADConfiguration config = new ADConfiguration();
         private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
         private static CloudTableClient tableClient = storageProvider.tableClient;
-        private static CloudTable table = storageProvider.CreateOrGetTable("AvailabilitySetsTable");
-        private static TableBatchOperation batchOperation = new TableBatchOperation();
+        private static CloudTable availabilitySetTable = storageProvider.CreateOrGetTable("AvailabilitySetsTable");
+        private static CloudTable vmTable = storageProvider.CreateOrGetTable("VirtualMachineTable");
 
         [FunctionName("AvailabilitySetsCrawler")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "CrawlAvailableSets")]HttpRequestMessage req, string name, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "CrawlAvailableSets")]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
             if (req == null || req.Content == null)
@@ -37,12 +38,14 @@ namespace ChaosExecuter.Crawler
             log.Info($"VM Chaos trigger function processed a request. RequestUri= { req.RequestUri }");
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<InputObject>();
-            if (data == null || string.IsNullOrWhiteSpace(data?.ResourceName))
-            {
-                return req.CreateResponse(HttpStatusCode.BadRequest, "Invalid ResourceGroup");
-            }
+            //if (data == null || string.IsNullOrWhiteSpace(data?.ResourceName))
+            //{
+            //    // return req.CreateResponse(HttpStatusCode.BadRequest, "Invalid ResourceGroup");
+            //}
             try
             {
+                TableBatchOperation availableSetbatchOperation = new TableBatchOperation();
+                TableBatchOperation vmBatchOperation = new TableBatchOperation();
                 var azure_client = AzureClient.GetAzure(config);
                 var availability_sets = azure_client.AvailabilitySets.List();
                 foreach (var availabilitySet in availability_sets)
@@ -51,7 +54,6 @@ namespace ChaosExecuter.Crawler
                     try
                     {
                         availabilitySetsCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
-                        //availabilitySetsCrawlerResponseEntity.EventType = data?.Action;
                         availabilitySetsCrawlerResponseEntity.Id = availabilitySet.Id;
                         availabilitySetsCrawlerResponseEntity.RegionName = availabilitySet.RegionName;
                         availabilitySetsCrawlerResponseEntity.ResourceGroupName = availabilitySet.Name;
@@ -61,16 +63,24 @@ namespace ChaosExecuter.Crawler
                         {
                             if (availabilitySet.Inner.VirtualMachines.Count > 0)
                             {
-                                List<string> virtualMachines = new List<string>();
+                                List<string> vmIds = new List<string>();
                                 foreach (var vm_in_as in availabilitySet.Inner.VirtualMachines)
                                 {
-                                    virtualMachines.Add(vm_in_as.Id.Split('/')[8]);
+                                    vmIds.Add(vm_in_as.Id.Split('/')[8]);
                                 }
-                                availabilitySetsCrawlerResponseEntity.Virtualmachines = string.Join(",", virtualMachines);
+                                availabilitySetsCrawlerResponseEntity.Virtualmachines = string.Join(",", vmIds);
                             }
                         }
 
-                        batchOperation.Insert(availabilitySetsCrawlerResponseEntity);
+                        var virtualMachines = azure_client.VirtualMachines.ListByResourceGroup(config.ResourceGroup).Where(x => x.AvailabilitySetId == availabilitySet.Id);
+                        foreach (var vm in virtualMachines)
+                        {
+                            var vmEntity = VirtualMachineHelper.ConvertToVirtualMachineEntity(vm, config.ResourceGroup);
+                            vmEntity.VirtualMachineGroup = VirtualMachineGroup.AvailabilitySets.ToString();
+                            vmBatchOperation.Insert(vmEntity);
+                        }
+
+                        availableSetbatchOperation.Insert(availabilitySetsCrawlerResponseEntity);
                     }
                     catch (Exception ex)
                     {
@@ -79,13 +89,19 @@ namespace ChaosExecuter.Crawler
                         return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
                     }
                 }
+
+                await Task.Factory.StartNew(() =>
+                {
+                    availabilitySetTable.ExecuteBatch(availableSetbatchOperation);
+                    vmTable.ExecuteBatch(vmBatchOperation);
+                });
             }
             catch
             {
             }
 
             // Fetching the name from the path parameter in the request URL
-            return req.CreateResponse(HttpStatusCode.OK, "Hello " + name);
+            return req.CreateResponse(HttpStatusCode.OK);
         }
     }
 }

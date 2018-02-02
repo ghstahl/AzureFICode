@@ -16,8 +16,5 @@ namespace AzureChaos.Models
 
         /// <summary>Get or sets  the resource group.</summary>
         public string ScaleSetName { get; set; }
-
-        /// <summary>Get or sets the scale out percentage of the resource </summary>
-        public string ScaleOutPercentage { get; set; }
     }
 }
