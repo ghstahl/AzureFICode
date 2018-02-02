@@ -23,8 +23,7 @@ namespace ChaosExecuter.Crawler
         private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
         private static CloudTableClient tableClient = storageProvider.tableClient;
         private static CloudTable availabilitySetTable = storageProvider.CreateOrGetTable("AvailabilitySetsTable");
-        private static CloudTable virtualMachineTable = storageProvider.CreateOrGetTable("VirtualMachines");
-        //private static TableBatchOperation batchOperation = new TableBatchOperation();
+        private static CloudTable virtualMachineTable = storageProvider.CreateOrGetTable("VirtualMachines");        
 
         [FunctionName("AvailabilitySetsCrawler")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "CrawlAvailabilitySets")]HttpRequestMessage req, TraceWriter log)
@@ -51,7 +50,6 @@ namespace ChaosExecuter.Crawler
                     try
                     {
                         availabilitySetsCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
-                        //availabilitySetsCrawlerResponseEntity.EventType = data?.Action;
                         availabilitySetsCrawlerResponseEntity.Id = availabilitySet.Id;
                         availabilitySetsCrawlerResponseEntity.RegionName = availabilitySet.RegionName;
                         availabilitySetsCrawlerResponseEntity.ResourceGroupName = availabilitySet.Name;
@@ -87,13 +85,19 @@ namespace ChaosExecuter.Crawler
                         return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
                     }
                 }
+
+                await Task.Factory.StartNew(() =>
+                {
+                    availabilitySetTable.ExecuteBatch(availableSetbatchOperation);
+                    vmTable.ExecuteBatch(vmBatchOperation);
+                });
             }
             catch
             {
             }
 
             // Fetching the name from the path parameter in the request URL
-            return req.CreateResponse(HttpStatusCode.OK, "Hello ");
+            return req.CreateResponse(HttpStatusCode.OK);
         }
     }
 }

@@ -23,8 +23,8 @@ namespace AzureChaos.Models
         /// <summary>Fault Domain Number in AvailibilitySet  to be passed</summary>
         public string FaultDomain { get; set;  }
 
-        /// <summary>Active Domain Number in AvailibilitySet  to be passed</summary>
-        public string ActiveDomain { get; set; }
+        /// <summary>Update Domain Number in AvailibilitySet  to be passed</summary>
+        public string UpdateDomain { get; set; }
 
         /// <summary>Percntage of VMs to be under Action</summary>
         public int VMPercentage { get; set; }

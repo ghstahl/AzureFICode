@@ -31,7 +31,7 @@ namespace ChaosExecuter.Executer
         /// <param name="log">The trace writer.</param>
         /// <returns>Returns the http response message.</returns>
         [FunctionName("vmchaos")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateChaos")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "vmexecuter")]HttpRequestMessage req, TraceWriter log)
         {
             if (req == null || req.Content == null)
             {

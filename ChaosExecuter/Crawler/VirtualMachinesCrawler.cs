@@ -27,7 +27,7 @@ namespace ChaosExecuter.Crawler
 
 
         [FunctionName("VirtualMachinesCrawler")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetVirtualMachines")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "crawlvirtualmachines")]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("VirtualMachinesCrawler function processed a request.");
             try
@@ -39,11 +39,11 @@ namespace ChaosExecuter.Crawler
                 List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(config);
                 foreach (string resourceGroup in resourceGroupList)
                 {
-                    var virtualMachines = azure_client.VirtualMachines.ListByResourceGroup(resourceGroup).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId)
+                    var virtualMachines =  azure_client.VirtualMachines.ListByResourceGroup(resourceGroup).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId)
                 && !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
                     foreach (IVirtualMachine virtualMachine in virtualMachines)
                     {
-                        batchOperation.Insert(ConvertToVirtualMachineEntity(virtualMachine));
+                        batchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
                     }
                 }
                 //var virtualMachines = azure_client.VirtualMachines.ListByResourceGroup(config.ResourceGroup).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId)
@@ -73,11 +73,12 @@ namespace ChaosExecuter.Crawler
         private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(IAzure azure_client)
         {
             var vmIds = new List<string>();
-            var pagedCollection = await azure_client.LoadBalancers.ListAsync();
-            if (pagedCollection == null)
+            var pagedCollection = await azure_client.LoadBalancers.ListByResourceGroupAsync(config.ResourceGroup);
+            if(pagedCollection == null)
             {
                 return vmIds;
             }
+
             var loadBalancers = pagedCollection.Select(x => x);
             if (loadBalancers == null || !loadBalancers.Any())
             {
@@ -85,24 +86,6 @@ namespace ChaosExecuter.Crawler
             }
             vmIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
             return vmIds;
-        }
-
-        /// <summary>Convert the Virtual machine to virtual machine crawler response entity.</summary>
-        /// <param name="virtualMachine">The virtual machine.</param>
-        /// <param name="vmGroupName">Vm group name.</param>
-        /// <returns></returns>
-        private static VirtualMachineCrawlerResponseEntity ConvertToVirtualMachineEntity(IVirtualMachine virtualMachine, string vmGroupName = "")
-        {
-            vmGroupName = string.IsNullOrWhiteSpace(vmGroupName) ? virtualMachine.Type : vmGroupName;
-            VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity(config.ResourceGroup, Guid.NewGuid().ToString());
-            virtualMachineCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
-            //resourceGroupCrawlerResponseEntity.EventType = data?.Action;
-            virtualMachineCrawlerResponseEntity.RegionName = virtualMachine.RegionName;
-            virtualMachineCrawlerResponseEntity.ResourceGroupName = virtualMachine.ResourceGroupName;
-            virtualMachineCrawlerResponseEntity.ResourceName = virtualMachine.Name;
-            virtualMachineCrawlerResponseEntity.AvailableSetId = virtualMachine.AvailabilitySetId;
-            virtualMachineCrawlerResponseEntity.ResourceType = virtualMachine.Type;
-            return virtualMachineCrawlerResponseEntity;
         }
     }
 }

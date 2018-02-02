@@ -25,7 +25,7 @@ namespace ChaosExecuter.Executer
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
         [FunctionName("VirtualMachineScaleSetVMExecuter")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "ScaleSetVmChaos")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "scalesetvmexecuter")]HttpRequestMessage req, TraceWriter log)
         {
             if (req == null || req.Content == null)
             {

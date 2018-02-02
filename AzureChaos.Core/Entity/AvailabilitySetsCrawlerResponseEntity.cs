@@ -14,12 +14,7 @@ namespace AzureChaos.Entity
         /// <summary>Availability Set Key Id</summary>
         public string Key { get; set; }       
 
-        [Required]
-        /// <summary>Availability Set Id </summary>
-        public string Id { get; set; }
-
-        [Required]
-        /// <summary>List of Virtual Machines in Availability Set</summary>
+        /// <summary>Triggered Event </summary>
         public string Virtualmachines { get; set; }
         [Required]
         /// <summary>No: of Fault Domains in Availability Set</summary>
