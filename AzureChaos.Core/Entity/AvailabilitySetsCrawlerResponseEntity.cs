@@ -1,12 +1,8 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AzureChaos.Entity
 {
-    public class AvailabilitySetsCrawlerResponseEntity : TableEntity
+    public class AvailabilitySetsCrawlerResponseEntity : CrawlerResponseEntity
     {
         public AvailabilitySetsCrawlerResponseEntity(string partitionKey, string rowKey)
         {
@@ -15,31 +11,21 @@ namespace AzureChaos.Entity
         }
 
         [Required]
-        /// <summary>Resource Group State</summary>
-        public string Key { get; set; }
-
-        /// <summary>The Region Name</summary>
-        public string RegionName { get; set; }
+        /// <summary>Availability Set Key Id</summary>
+        public string Key { get; set; }       
 
         [Required]
-        /// <summary>Resource Group name </summary>
-        public string ResourceGroupName { get; set; }
-
-        [Required]
-        /// <summary>Resource Group id </summary>
+        /// <summary>Availability Set Id </summary>
         public string Id { get; set; }
 
         [Required]
-        /// <summary>DateTime whenRecord Entered into the Table</summary>
-        public DateTime EntryInsertionTime { get; set; }
-
-        /// <summary>Triggered Event </summary>
+        /// <summary>List of Virtual Machines in Availability Set</summary>
         public string Virtualmachines { get; set; }
-
+        [Required]
+        /// <summary>No: of Fault Domains in Availability Set</summary>
         public int FaultDomainCount { get; set; }
+        [Required]
+        /// <summary>No: of Update Domains in Availability Set</summary>
         public int UpdateDomainCount { get; set; }
-
-        /// <summary>Error message if anything occured on the time of execution.</summary>
-        public string Error { get; set; }
     }
 }

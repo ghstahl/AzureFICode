@@ -18,6 +18,9 @@ namespace AzureChaos.Entity
         /// <summary>DateTime whenRecord Entered into the Table</summary>
         public DateTime EntryInsertionTime { get; set; }
 
+        /// <summary>Resource Id </summary>
+        public string Id { get; set; }
+
         [Required]
         /// <summary>Resource Type name</summary>
         public string ResourceType { get; set; }

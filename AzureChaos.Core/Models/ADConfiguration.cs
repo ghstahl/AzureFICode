@@ -1,5 +1,6 @@
 ﻿using AzureChaos.Core.AzureClient;
 using AzureChaos.Enums;
+using AzureChaos.ReguestHelpers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace AzureChaos.Models
         /// will be adding the storage account details in the azure function and will provide azure function
         public ADConfiguration()
         {
-            GlobalConfig config = JsonConvert.DeserializeObject<GlobalConfig>(ExecuteGetWebRequest("https://cmonkeylogs.blob.core.windows.net/configs/globalconfig.json"));
+            GlobalConfig config = JsonConvert.DeserializeObject<GlobalConfig>(HTTPHelpers.ExecuteGetWebRequest("https://cmonkeylogs.blob.core.windows.net/configs/accountConfig.json"));
             ResourceGroup = "Chaos_Monkey_RG";
             SubscriptionId = config.subscription;
             TenantId = config.tenant;
@@ -63,60 +64,13 @@ namespace AzureChaos.Models
         [JsonProperty("resourcegroup")]
         public string ResourceGroup { get; set; }
 
+        /// <summary>Defines the default resource group.</summary>
+        [JsonProperty("resourcegroup")]
+        public string DefaultResourceGroup { get; set; }
+
         /// <summary>Defines resource types which want to exclude from the chaos. its defined by comma separated.</summary>
         [JsonProperty("excludedresourcetype")]
-        public string ExcludedResourceType { get; set; }
-
-        [JsonIgnore]
-        public List<ResourceType> ExcludeResourceTypeList
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(ExcludedResourceType))
-                {
-                    return null;
-                }
-
-                var resourceTypeList = ExcludedResourceType.Split(',');
-                if (!resourceTypeList.Any())
-                {
-                    return null;
-                }
-
-                var resources = resourceTypeList.Select(x =>
-                {
-                    ResourceType type;
-                    if (Enum.TryParse(x, out type))
-                    {
-                        return type;
-                    }
-
-                    return type;
-                }).Where(x => x != ResourceType.Unknown);
-
-                return resources.Any() ? resources.ToList() : null;
-            }
-        }
-        private static string ExecuteGetWebRequest(string webReqURL)
-        {
-            string result = string.Empty;
-            try
-            {
-                HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(webReqURL);
-                httpWebRequest.Proxy = null;
-                httpWebRequest.Method = WebRequestMethods.Http.Get;
-                HttpWebResponse response = (HttpWebResponse)httpWebRequest.GetResponse();
-                using (Stream stream = response.GetResponseStream())
-                {
-                    StreamReader reader = new StreamReader(stream, Encoding.UTF8, true);
-                    result = reader.ReadToEnd();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            return result;
-        }
+        public string ExcludedResourceType { get; set; }       
+        
     }
 }

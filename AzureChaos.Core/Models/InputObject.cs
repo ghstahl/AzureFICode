@@ -17,7 +17,16 @@ namespace AzureChaos.Models
         /// <summary>Get or sets  the resource group.</summary>
         public string ScaleSetName { get; set; }
 
-        /// <summary>Get or sets the scale out percentage of the resource </summary>
-        public string ScaleOutPercentage { get; set; }
+        /// <summary>AvailibilitySet Name to be passed</summary>
+        public string AvailibilitySet { get; set; }
+
+        /// <summary>Fault Domain Number in AvailibilitySet  to be passed</summary>
+        public string FaultDomain { get; set;  }
+
+        /// <summary>Active Domain Number in AvailibilitySet  to be passed</summary>
+        public string ActiveDomain { get; set; }
+
+        /// <summary>Percntage of VMs to be under Action</summary>
+        public int VMPercentage { get; set; }
     }
 }
