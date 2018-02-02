@@ -16,14 +16,9 @@
 
         /// <summary>Fault domain value.</summary>
         public int? FaultDomain { get; set; }
+
         /// <summary>Scale Set Id. i.e. Vm belongs to which scale set if any.</summary>
-        public string ScaleSetId { get; set; }
-
-        /// <summary>Update domain value.</summary>
-        public int? UpdateDomain { get; set; }
-
-        /// <summary>Fault domain value.</summary>
-        public int? FaultDomain { get; set; }
+        public string ScaleSetId { get; set; }       
 
         /// <summary>The virtual machine group name i.e. the virtual machine belongs to which resource type ex. is it from Available Set, Scale Set  or Load balancers etc...</summary>
         public string VirtualMachineGroup { get; set; }

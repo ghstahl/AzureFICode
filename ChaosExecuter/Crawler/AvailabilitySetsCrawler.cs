@@ -88,8 +88,8 @@ namespace ChaosExecuter.Crawler
 
                 await Task.Factory.StartNew(() =>
                 {
-                    availabilitySetTable.ExecuteBatch(availableSetbatchOperation);
-                    vmTable.ExecuteBatch(vmBatchOperation);
+                    availabilitySetTable.ExecuteBatch(availabilitySetBatchOperation);
+                    virtualMachineTable.ExecuteBatch(virtualMachineBatchOperation);
                 });
             }
             catch

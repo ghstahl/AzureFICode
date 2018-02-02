@@ -26,10 +26,7 @@ namespace AzureChaos.Entity
         public string ResourceType { get; set; }
 
         /// <summary>The Resource Name.</summary>
-        public string ResourceName { get; set; }
-
-        /// <summary>Resource Id </summary>
-        public string Id { get; set; }
+        public string ResourceName { get; set; }        
 
         /// <summary>Triggered Event </summary>
         public TriggeredEvent EventType { get; set; }
