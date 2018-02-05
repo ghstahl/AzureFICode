@@ -13,7 +13,7 @@ namespace AzureChaos.Helper
         /// <returns></returns>
         public static VirtualMachineCrawlerResponseEntity ConvertToVirtualMachineEntity(IVirtualMachine virtualMachine, string vmGroup = "")
         {
-            VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity(virtualMachine.ResourceGroupName, Guid.NewGuid().ToString());
+            VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity("crawlvms", Guid.NewGuid().ToString());
             virtualMachineCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
             //resourceGroupCrawlerResponseEntity.EventType = data?.Action;
             virtualMachineCrawlerResponseEntity.RegionName = virtualMachine.RegionName;
@@ -36,7 +36,7 @@ namespace AzureChaos.Helper
         /// <returns></returns>
         public static VirtualMachineCrawlerResponseEntity ConvertToVirtualMachineEntity(IVirtualMachineScaleSetVM scaleSetVM, string resourceGroup, string scaleSetId, string vmGroup = "")
         {
-            VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity(resourceGroup, Guid.NewGuid().ToString());
+            VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity("crawlvms", Guid.NewGuid().ToString());
             virtualMachineCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
             //resourceGroupCrawlerResponseEntity.EventType = data?.Action;
             virtualMachineCrawlerResponseEntity.RegionName = scaleSetVM.RegionName;

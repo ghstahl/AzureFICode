@@ -1,15 +1,14 @@
-﻿using AzureChaos.Models;
+﻿using Microsoft.Azure.Management.Fluent;
 using System.Collections.Generic;
 
 namespace AzureChaos.Helper
 {
     public class ResourceGroupHelper
     {
-        public static List<string> GetResourceGroupsInSubscription(ADConfiguration config)
+        public static List<string> GetResourceGroupsInSubscription(IAzure azure)
         {
             List<string> resourceGroups = new List<string>();
-            var azure_client = AzureClient.GetAzure(config);   //.GetAzure(config);
-            var resourceGroupList = azure_client.ResourceGroups.List();
+            var resourceGroupList = azure.ResourceGroups.List();
             foreach (var resourceGroup in resourceGroupList)
             {
                 resourceGroups.Add(resourceGroup.Name);

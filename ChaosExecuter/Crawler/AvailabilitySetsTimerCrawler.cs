@@ -4,26 +4,24 @@ using AzureChaos.Helper;
 using AzureChaos.Models;
 using AzureChaos.Providers;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
-    public static class AvailabilitySetsCrawler
+    public static class AvailabilitySetsTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
         private static StorageAccountProvider storageProvider = new StorageAccountProvider();
 
-        [FunctionName("crawlavailabilitysets")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "crawlavailabilitysets")]HttpRequestMessage req, TraceWriter log)
+        [FunctionName("timercrawlerforavailabilitysets")]
+        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
+            log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.Now}");
             try
             {
                 var availability_sets = azureClient.azure.AvailabilitySets.List();
@@ -52,6 +50,7 @@ namespace ChaosExecuter.Crawler
                                 availabilitySetsCrawlerResponseEntity.Virtualmachines = string.Join(",", virtualMachinesSet);
                             }
                         }
+
                         var virtualMachinesList = azureClient.azure.VirtualMachines.ListByResourceGroup(availabilitySet.ResourceGroupName
                             ).Where(x => x.AvailabilitySetId == availabilitySet.Id);
                         foreach (var virtualMachine in virtualMachinesList)
@@ -66,8 +65,7 @@ namespace ChaosExecuter.Crawler
                     catch (Exception ex)
                     {
                         availabilitySetsCrawlerResponseEntity.Error = ex.Message;
-                        log.Error($"AvailabilitySet Crawler trigger function Throw the exception ", ex, "VMChaos");
-                        return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+                        log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
                     }
                 }
 
@@ -84,11 +82,9 @@ namespace ChaosExecuter.Crawler
             }
             catch (Exception ex)
             {
+                log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
                 throw ex;
             }
-
-            // Fetching the name from the path parameter in the request URL
-            return req.CreateResponse(HttpStatusCode.OK);
         }
     }
 }

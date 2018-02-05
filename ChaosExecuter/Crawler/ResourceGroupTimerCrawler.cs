@@ -2,25 +2,22 @@ using AzureChaos.Entity;
 using AzureChaos.Models;
 using AzureChaos.Providers;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
-    public static class ResourceGroupCrawler
+    public static class ResourceGroupTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
         private static StorageAccountProvider storageProvider = new StorageAccountProvider();
 
-        [FunctionName("crawlresourcesgroups")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "crawlresourcesgroups")]HttpRequestMessage req, TraceWriter log)
+        [FunctionName("timercrawlerresourcegroups")]
+        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
-            log.Info("C# HTTP trigger function processed a request.");
+            log.Info($"timercrawlerresourcegroups executed at: {DateTime.Now}");
             TableBatchOperation batchOperation = new TableBatchOperation();
             try
             {
@@ -39,27 +36,23 @@ namespace ChaosExecuter.Crawler
                     catch (Exception ex)
                     {
                         resourceGroupCrawlerResponseEntity.Error = ex.Message;
-                        log.Error($"VM Chaos trigger function Throw the exception ", ex, "VMChaos");
-                        return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+                        log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
                     }
                 }
             }
             catch (Exception ex)
             {
-                log.Error($"ResourceGroup Crawler function Throwed the exception ", ex, "RGCrawler");
-                return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+                log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
             }
 
             await Task.Factory.StartNew(() =>
-             {
-                 if (batchOperation.Count > 0)
-                 {
-                     CloudTable table = storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
-                     table.ExecuteBatch(batchOperation);
-                 }
-             });
-
-            return req.CreateResponse(HttpStatusCode.OK);
+            {
+                if (batchOperation.Count > 0)
+                {
+                    CloudTable table = storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
+                    table.ExecuteBatch(batchOperation);
+                }
+            });
         }
     }
 }

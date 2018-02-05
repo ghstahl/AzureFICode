@@ -1,9 +1,3 @@
-using System;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using AzureChaos;
 using AzureChaos.Entity;
 using AzureChaos.Enums;
 using AzureChaos.Models;
@@ -13,18 +7,22 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using System;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace ChaosExecuter.Executer
 {
     public static class VirtualMachineScaleSetVMExecuter
     {
         /// <summary>Azure Configuration.</summary>
-        private static ADConfiguration config = new ADConfiguration();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(config);
-        private static string eventTableName = "dummytablename";
+        private static AzureClient azureClient = new AzureClient();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
-        [FunctionName("VirtualMachineScaleSetVMExecuter")]
+        [FunctionName("scalesetvmexecuter")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "scalesetvmexecuter")]HttpRequestMessage req, TraceWriter log)
         {
             if (req == null || req.Content == null)
@@ -46,9 +44,8 @@ namespace ChaosExecuter.Executer
             EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceGroup);
             try
             {
-                var azure = AzureClient.GetAzure(config);
-                IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(azure, config.ResourceGroup, data.ResourceName, data.ScaleSetName);
-                log.Info($"VMScaleSet Chaos trigger function Processing the action= " + data?.Action);
+                IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(azureClient.azure, data.ResourceGroup, data.ResourceName, data.ScaleSetName);
+                log.Info($"VMScaleSet Chaos trigger function Processing the action= " + data.Action);
                 SetInitialEventActivity(scaleSetVM, data, eventActivity);
 
                 // if its not valid chaos then update the event table with  warning message and return the bad request response
@@ -57,7 +54,7 @@ namespace ChaosExecuter.Executer
                 {
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = WarningMessageOnSameState;
-                    await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
+                    await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
                     return req.CreateResponse(HttpStatusCode.BadRequest);
                 }
 
@@ -69,13 +66,13 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = scaleSetVM.PowerState.Value;
                 }
 
-                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
+                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
                 return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
-                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
+                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
                 log.Error($"VMScaleSet Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
@@ -109,7 +106,7 @@ namespace ChaosExecuter.Executer
         private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivityEntity eventActivity)
         {
             eventActivity.Status = Status.Started.ToString();
-            await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, eventTableName);
+            await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
             switch (actionType)
             {
                 case ActionType.Start:
@@ -149,7 +146,7 @@ namespace ChaosExecuter.Executer
         /// <returns>Returns the virtual machine.</returns>
         private static async Task<IVirtualMachineScaleSetVM> GetVirtualMachineScaleSetVm(IAzure azure, string resourceGroup, string resourceName, string scaleSet)
         {
-            var vmScaleSets = await azure.VirtualMachineScaleSets.ListByResourceGroupAsync(config.ResourceGroup);
+            var vmScaleSets = await azure.VirtualMachineScaleSets.ListByResourceGroupAsync(resourceGroup);
             if (vmScaleSets == null || !vmScaleSets.Any())
             {
                 return null;
