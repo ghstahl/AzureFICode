@@ -3,7 +3,7 @@ using AzureChaos.Entity;
 using AzureChaos.Enums;
 using AzureChaos.Models;
 using AzureChaos.Providers;
-using ChaosExecuter.Helper;
+using AzureChaos.Helper;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;

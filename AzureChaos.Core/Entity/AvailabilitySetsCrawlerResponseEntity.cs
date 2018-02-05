@@ -1,8 +1,4 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AzureChaos.Entity
 {
@@ -15,16 +11,16 @@ namespace AzureChaos.Entity
         }
 
         [Required]
-        /// <summary>Resource Group State</summary>
-        public string Key { get; set; }
+        /// <summary>Availability Set Key Id</summary>
+        public string Key { get; set; }       
 
         /// <summary>Triggered Event </summary>
         public string Virtualmachines { get; set; }
-
-        /// <summary>Fault domain count for the availability set.</summary>
+        [Required]
+        /// <summary>No: of Fault Domains in Availability Set</summary>
         public int FaultDomainCount { get; set; }
-
-        /// <summary>Update domain count for the availability set.</summary>
+        [Required]
+        /// <summary>No: of Update Domains in Availability Set</summary>
         public int UpdateDomainCount { get; set; }
     }
 }

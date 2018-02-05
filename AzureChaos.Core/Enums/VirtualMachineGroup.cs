@@ -1,18 +1,24 @@
-﻿namespace AzureChaos.Enums
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace AzureChaos.Enums
 {
-    /// <summary>Azure Resource types. </summary>
     public enum VirtualMachineGroup
     {
-        /// <summary>Standlone virtual machines.</summary>
+        /// <summary>Standlone Virtual Machines</summary>
         VirtualMachines,
 
-        /// <summary>Virtual machines in availability sets.</summary>
+        /// <summary>Virtual Machines in Availability Sets</summary>
         AvailabilitySets,
 
-        /// <summary>Virtual machines in scale sets.</summary>
+        /// <summary>Virtual Machines in Scale Sets</summary>
         ScaleSets,
 
-        /// <summary>Virtual machines in load balancers.</summary>
-        LoadBalancers
+        /// <summary>Virtual Machines in Load Balancer</summary>
+        LoadBalancer,
+
+        /// <summary>Virtual Machines in Availability Zones</summary>
+        AvailabilityZones
     }
 }

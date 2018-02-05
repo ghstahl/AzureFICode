@@ -2,7 +2,7 @@ using AzureChaos;
 using AzureChaos.Entity;
 using AzureChaos.Models;
 using AzureChaos.Providers;
-using ChaosExecuter.Helper;
+using AzureChaos.Helper;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
@@ -33,21 +33,25 @@ namespace ChaosExecuter.Crawler
             try
             {
                 TableBatchOperation batchOperation = new TableBatchOperation();
-                var azure_client = AzureClient.GetAzure(config);
-                var loadBalancersVms = await GetVmsFromLoadBalancers(azure_client);
+                IAzure azure_client = AzureClient.GetAzure(config);
+                List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(azure_client);
                 // will be listing out only the standalone virtual machines.
-                var pagedCollection = await azure_client.VirtualMachines.ListByResourceGroupAsync(config.ResourceGroup);
-                if(pagedCollection == null || !pagedCollection.Any())
+                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(config);
+                foreach (string resourceGroup in resourceGroupList)
                 {
-                    return req.CreateResponse(HttpStatusCode.NoContent);
+                    var virtualMachines =  azure_client.VirtualMachines.ListByResourceGroup(resourceGroup).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId)
+                && !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
+                    foreach (IVirtualMachine virtualMachine in virtualMachines)
+                    {
+                        batchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
+                    }
                 }
-
-                var virtualMachines = pagedCollection.Select(x => x).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId) &&
-                !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
-                foreach (var virtualMachine in virtualMachines)
-                {
-                    batchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
-                }
+                //var virtualMachines = azure_client.VirtualMachines.ListByResourceGroup(config.ResourceGroup).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId)
+                //&& !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
+                //foreach (var virtualMachine in virtualMachines)
+                //{
+                //    batchOperation.Insert(ConvertToVirtualMachineEntity(virtualMachine));
+                //}
 
                 await Task.Factory.StartNew(() =>
                 {
@@ -66,7 +70,7 @@ namespace ChaosExecuter.Crawler
         /// <summary>Get the list of </summary>
         /// <param name="azure_client"></param>
         /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
-        private static async Task<List<string>> GetVmsFromLoadBalancers(IAzure azure_client)
+        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(IAzure azure_client)
         {
             var vmIds = new List<string>();
             var pagedCollection = await azure_client.LoadBalancers.ListByResourceGroupAsync(config.ResourceGroup);
@@ -80,7 +84,6 @@ namespace ChaosExecuter.Crawler
             {
                 return vmIds;
             }
-
             vmIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
             return vmIds;
         }
