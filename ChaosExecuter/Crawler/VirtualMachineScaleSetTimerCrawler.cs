@@ -64,12 +64,15 @@ namespace ChaosExecuter.Crawler
 
                 await Task.Factory.StartNew(() =>
                 {
-                    if (scaleSetbatchOperation.Count > 0 && vmbatchOperation.Count > 0)
+                    if (scaleSetbatchOperation.Count > 0)
                     {
                         CloudTable scaleSetTable = storageProvider.CreateOrGetTable(azureClient.ScaleSetCrawlerTableName);
+                        scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
+                    }
+                    if (vmbatchOperation.Count > 0)
+                    {
                         CloudTable vmTable = storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
-                        scaleSetTable.ExecuteBatch(scaleSetbatchOperation);
-                        vmTable.ExecuteBatch(vmbatchOperation);
+                        vmTable.ExecuteBatchAsync(vmbatchOperation);
                     }
                 });
             }

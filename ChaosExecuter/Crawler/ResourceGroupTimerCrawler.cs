@@ -50,7 +50,7 @@ namespace ChaosExecuter.Crawler
                 if (batchOperation.Count > 0)
                 {
                     CloudTable table = storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
-                    table.ExecuteBatch(batchOperation);
+                    table.ExecuteBatchAsync(batchOperation);
                 }
             });
         }

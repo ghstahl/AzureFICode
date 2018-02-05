@@ -71,12 +71,15 @@ namespace ChaosExecuter.Crawler
 
                 await Task.Factory.StartNew(() =>
                 {
-                    if (availabilitySetBatchOperation.Count > 0 && virtualMachineBatchOperation.Count > 0)
+                    if (availabilitySetBatchOperation.Count > 0)
                     {
                         CloudTable availabilitySetTable = storageProvider.CreateOrGetTable(azureClient.AvailabilitySetCrawlerTableName);
-                        availabilitySetTable.ExecuteBatch(availabilitySetBatchOperation);
+                        availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
+                    }
+                    if (virtualMachineBatchOperation.Count > 0)
+                    {
                         CloudTable virtualMachineTable = storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
-                        virtualMachineTable.ExecuteBatch(virtualMachineBatchOperation);
+                        virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
                     }
                 });
             }
