@@ -11,11 +11,12 @@ namespace AzureChaos.Providers
     {
         public CloudStorageAccount storageAccount;
         public CloudTableClient tableClient;
-        private AzureClient azureClient = new AzureClient();
+        private AzureClient azureClient;
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        public StorageAccountProvider()
+        public StorageAccountProvider(AzureClient azureClient)
         {
+            this.azureClient = azureClient;
             this.storageAccount = CreateStorageAccount();
             this.tableClient = this.storageAccount.CreateCloudTableClient();
         }
@@ -36,7 +37,7 @@ namespace AzureChaos.Providers
 
         /// <summary>Create new table for given storage account.</summary>
         /// <param name="tableName">The table name.</param>
-        public CloudTable CreateOrGetTable(string tableName)
+        public async Task<CloudTable> CreateOrGetTable(string tableName)
         {
             try
             {
@@ -49,7 +50,7 @@ namespace AzureChaos.Providers
                 CloudTable table = this.tableClient.GetTableReference(tableName);
 
                 // Create the table if it doesn't exist.
-                table.CreateIfNotExistsAsync();
+                await table.CreateIfNotExistsAsync();
                 return table;
             }
             catch (Exception ex)
@@ -67,7 +68,7 @@ namespace AzureChaos.Providers
         {
             try
             {
-                var table = CreateOrGetTable(tableName);
+                var table = await CreateOrGetTable(tableName);
                 if (table == null)
                 {
                     return;

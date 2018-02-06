@@ -15,7 +15,7 @@ namespace ChaosExecuter.Crawler
     public static class ResourceGroupCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
 
         [FunctionName("crawlresourcesgroups")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "crawlresourcesgroups")]HttpRequestMessage req, TraceWriter log)
@@ -43,6 +43,12 @@ namespace ChaosExecuter.Crawler
                         return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
                     }
                 }
+
+                if (batchOperation.Count > 0)
+                {
+                    CloudTable table = await storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
+                    await table.ExecuteBatchAsync(batchOperation);
+                }
             }
             catch (Exception ex)
             {
@@ -50,14 +56,7 @@ namespace ChaosExecuter.Crawler
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
 
-            await Task.Factory.StartNew(() =>
-             {
-                 if (batchOperation.Count > 0)
-                 {
-                     CloudTable table = storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
-                     table.ExecuteBatchAsync(batchOperation);
-                 }
-             });
+
 
             return req.CreateResponse(HttpStatusCode.OK);
         }

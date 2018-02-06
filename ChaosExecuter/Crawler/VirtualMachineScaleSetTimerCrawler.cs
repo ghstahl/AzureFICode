@@ -16,7 +16,7 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachineScaleSetTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
 
         [FunctionName("timercrawlerforvirtualmachinescaleset")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -62,19 +62,16 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
-                await Task.Factory.StartNew(() =>
+                if (scaleSetbatchOperation.Count > 0)
                 {
-                    if (scaleSetbatchOperation.Count > 0)
-                    {
-                        CloudTable scaleSetTable = storageProvider.CreateOrGetTable(azureClient.ScaleSetCrawlerTableName);
-                        scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
-                    }
-                    if (vmbatchOperation.Count > 0)
-                    {
-                        CloudTable vmTable = storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
-                        vmTable.ExecuteBatchAsync(vmbatchOperation);
-                    }
-                });
+                    CloudTable scaleSetTable = await storageProvider.CreateOrGetTable(azureClient.ScaleSetCrawlerTableName);
+                    await scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
+                }
+                if (vmbatchOperation.Count > 0)
+                {
+                    CloudTable vmTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    await vmTable.ExecuteBatchAsync(vmbatchOperation);
+                }
             }
             catch (Exception ex)
             {

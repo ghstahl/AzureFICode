@@ -22,7 +22,7 @@ namespace ChaosExecuter.Executer
         /// <summary>Azure Configuration.</summary>
         private static AzureClient azureClient = new AzureClient();
 
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>

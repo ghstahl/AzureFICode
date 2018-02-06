@@ -20,7 +20,8 @@ namespace AzureChaos.Models
         public AzureClient()
         {
             ///Microsoft subscription blob endpoint for configs:  https://chaostest.blob.core.windows.net/config/azuresettings.json
-            ///Zen3 subscription blob endpoint for configs:  https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json
+            ///Zen3 subscription blob endpoint for configs: ==>  https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json
+            /// Microsoft demo config file ==> https://stachaosteststorage.blob.core.windows.net/configs/azuresettings.json 
             var clientConfig = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest("https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json"));
             this.SubscriptionId = clientConfig.SubscriptionId; //ConfigurationManager.AppSettings["SubscriptionId"];
             this.ClientId = clientConfig.ClientId; //ConfigurationManager.AppSettings["ClientId"];

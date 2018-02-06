@@ -16,7 +16,7 @@ namespace ChaosExecuter.Crawler
     public static class AvailabilitySetsTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
 
         [FunctionName("timercrawlerforavailabilitysets")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -69,19 +69,16 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
-                await Task.Factory.StartNew(() =>
+                if (availabilitySetBatchOperation.Count > 0)
                 {
-                    if (availabilitySetBatchOperation.Count > 0)
-                    {
-                        CloudTable availabilitySetTable = storageProvider.CreateOrGetTable(azureClient.AvailabilitySetCrawlerTableName);
-                        availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
-                    }
-                    if (virtualMachineBatchOperation.Count > 0)
-                    {
-                        CloudTable virtualMachineTable = storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
-                        virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
-                    }
-                });
+                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTable(azureClient.AvailabilitySetCrawlerTableName);
+                    await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
+                }
+                if (virtualMachineBatchOperation.Count > 0)
+                {
+                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    await virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
+                }
             }
             catch (Exception ex)
             {
