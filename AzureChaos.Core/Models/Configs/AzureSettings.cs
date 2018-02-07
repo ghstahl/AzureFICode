@@ -4,43 +4,29 @@ namespace AzureChaos.Models
 {
     public class AzureSettings
     {
-        [JsonProperty("subscriptionid")]
-        public string SubscriptionId { get; set; }
+        [JsonProperty("ClientConfig")]
+        public ClientConfig Client { get; set; }
 
-        [JsonProperty("clientid")]
-        public string ClientId { get; set; }
+        [JsonProperty("ChaosConfig")]
+        public ChaosConfig Chaos { get; set; }
 
-        [JsonProperty("clientsecret")]
-        public string ClientSecret { get; set; }
-
-        [JsonProperty("tenantid")]
-        public string TenantId { get; set; }
-
-        [JsonProperty("region")]
-        public string Region { get; set; }
-
-        [JsonProperty("resourcegroup")]
-        public string ResourceGroup { get; set; }
-
-        [JsonProperty("resourcegroupcrawlertablename")]
+        /// <summary> Do we keep these storage account table information in the Config files OR will keep as constant name?</summary>
+        [JsonProperty("microsoft.chaos.client.table.resourceGroupCrawler")]
         public string ResourceGroupCrawlerTableName { get; set; }
 
-        [JsonProperty("virtualmachinecrawlertablename")]
+        [JsonProperty("microsoft.chaos.client.table.virtualMachineCrawler")]
         public string VirtualMachineCrawlerTableName { get; set; }
 
-        [JsonProperty("availabilitysetcrawlertablename")]
+        [JsonProperty("microsoft.chaos.client.table.availabilitySetCrawler")]
         public string AvailabilitySetCrawlerTableName { get; set; }
 
-        [JsonProperty("scalesetcrawlertablename")]
+        [JsonProperty("microsoft.chaos.client.table.scaleSetCrawler")]
         public string ScaleSetCrawlerTableName { get; set; }
 
-        [JsonProperty("availabilityzonecrawlertablename")]
+        [JsonProperty("microsoft.chaos.client.table.availabilityZoneCrawler")]
         public string AvailabilityZoneCrawlerTableName { get; set; }
 
-        [JsonProperty("activitylogtable")]
+        [JsonProperty("microsoft.chaos.client.table.activityLog")]
         public string ActivityLogTable { get; set; }
-
-        [JsonProperty("storageaccountname")]
-        public string StorageAccountName { get; set; }
     }
 }

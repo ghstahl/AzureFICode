@@ -20,7 +20,7 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachineScaleSetCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         /// <summary>Crawl the virtual machine scale sets and scale set vm instance for all resource group.</summary>
         /// <param name="req">The Http request.</param>
@@ -61,14 +61,16 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (scaleSetbatchOperation.Count > 0)
                 {
-                    CloudTable scaleSetTable = await storageProvider.CreateOrGetTable(azureClient.ScaleSetCrawlerTableName);
+                    CloudTable scaleSetTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ScaleSetCrawlerTableName);
                     await scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
                 }
+
                 if (vmbatchOperation.Count > 0)
                 {
-                    CloudTable vmTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable vmTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await vmTable.ExecuteBatchAsync(vmbatchOperation);
                 }
             }

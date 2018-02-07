@@ -15,7 +15,7 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachineTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachines")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -43,9 +43,10 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (batchOperation.Count > 0)
                 {
-                    CloudTable table = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }

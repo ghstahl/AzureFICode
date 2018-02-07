@@ -1,6 +1,4 @@
-﻿using AzureChaos.Enums;
-using Microsoft.Azure.Management.Compute.Fluent;
-using Microsoft.WindowsAzure.Storage.Table;
+﻿using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,8 +8,8 @@ namespace AzureChaos.Entity
     {
         public EventActivityEntity()
         {
-
         }
+
         public EventActivityEntity(string partitionKey, string rowKey = "")
         {
             this.PartitionKey = partitionKey;

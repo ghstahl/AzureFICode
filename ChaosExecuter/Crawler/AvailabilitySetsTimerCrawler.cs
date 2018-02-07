@@ -9,14 +9,13 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
     public static class AvailabilitySetsTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforavailabilitysets")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -69,14 +68,15 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (availabilitySetBatchOperation.Count > 0)
                 {
-                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTable(azureClient.AvailabilitySetCrawlerTableName);
+                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.AvailabilitySetCrawlerTableName);
                     await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
                 }
                 if (virtualMachineBatchOperation.Count > 0)
                 {
-                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
                 }
             }

@@ -19,7 +19,7 @@ namespace ChaosExecuter.Crawler
     public static class AvailabilitySetsCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("crawlavailabilitysets")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "crawlavailabilitysets")]HttpRequestMessage req, TraceWriter log)
@@ -65,14 +65,17 @@ namespace ChaosExecuter.Crawler
                         return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
                     }
                 }
+
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (availabilitySetBatchOperation.Count > 0)
                 {
-                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTable(azureClient.AvailabilitySetCrawlerTableName);
+                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.AvailabilitySetCrawlerTableName);
                     await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
                 }
+
                 if (virtualMachineBatchOperation.Count > 0)
                 {
-                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
                 }
             }

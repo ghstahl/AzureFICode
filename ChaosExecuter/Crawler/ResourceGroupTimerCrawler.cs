@@ -5,14 +5,13 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
-using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
     public static class ResourceGroupTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerresourcegroups")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -45,9 +44,10 @@ namespace ChaosExecuter.Crawler
                 log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
             }
 
+            var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
             if (batchOperation.Count > 0)
             {
-                CloudTable table = await storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
+                CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ResourceGroupCrawlerTableName);
                 await table.ExecuteBatchAsync(batchOperation);
             }
         }

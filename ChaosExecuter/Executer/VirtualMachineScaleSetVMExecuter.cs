@@ -7,6 +7,7 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage;
 using System;
 using System.Linq;
 using System.Net;
@@ -19,7 +20,8 @@ namespace ChaosExecuter.Executer
     {
         /// <summary>Azure Configuration.</summary>
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
         [FunctionName("scalesetvmexecuter")]
@@ -42,6 +44,7 @@ namespace ChaosExecuter.Executer
             }
 
             EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceGroup);
+            var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
             try
             {
                 IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(azureClient.azure, data.ResourceGroup, data.ResourceName, data.ScaleSetName);
@@ -54,11 +57,11 @@ namespace ChaosExecuter.Executer
                 {
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = WarningMessageOnSameState;
-                    await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
+                    await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                     return req.CreateResponse(HttpStatusCode.BadRequest);
                 }
 
-                await PerformChaos(data.Action, scaleSetVM, eventActivity);
+                await PerformChaos(data.Action, scaleSetVM, eventActivity, storageAccount);
                 scaleSetVM = await scaleSetVM.RefreshAsync();
                 if (scaleSetVM != null)
                 {
@@ -66,13 +69,13 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = scaleSetVM.PowerState.Value;
                 }
 
-                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
+                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                 return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
-                await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
+                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                 log.Error($"VMScaleSet Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
@@ -103,19 +106,21 @@ namespace ChaosExecuter.Executer
         /// <param name="virtualMachine">Virtual Machine</param>
         /// <param name="eventActivity">Event activity entity</param>
         /// <returns></returns>
-        private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivityEntity eventActivity)
+        private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivityEntity eventActivity, CloudStorageAccount storageAccount)
         {
             eventActivity.Status = Status.Started.ToString();
-            await storageProvider.InsertOrMerge<EventActivityEntity>(eventActivity, azureClient.ActivityLogTable);
+            await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
             switch (actionType)
             {
                 case ActionType.Start:
                     await scaleSetVm.StartAsync();
                     break;
+
                 case ActionType.PowerOff:
                 case ActionType.Stop:
                     await scaleSetVm.PowerOffAsync();
                     break;
+
                 case ActionType.Restart:
                     await scaleSetVm.RestartAsync();
                     break;

@@ -1,86 +1,144 @@
 ﻿using AzureChaos.Models;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureChaos.Providers
 {
-    /// <summary>The storage account provider</summary>
-    public class StorageAccountProvider
+    /// <summary>The storage account provider.</summary>
+    /// Creates the storage account if not any for the given storage account name in the config.
+    /// Create the table client for the given storage account.
+    public class StorageAccountProvider : IStorageAccountProvider
     {
-        public CloudStorageAccount storageAccount;
-        public CloudTableClient tableClient;
-        private AzureClient azureClient;
-        private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
+        /// <summary>Default format for the storage connection string.</summary>
+        private const string connectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        public StorageAccountProvider(AzureClient azureClient)
+        public Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureClient azureClient)
         {
-            this.azureClient = azureClient;
-            this.storageAccount = CreateStorageAccount();
-            this.tableClient = this.storageAccount.CreateCloudTableClient();
+            throw new NotImplementedException();
         }
 
-        /// <summary>Create Storage Account.</summary>
-        /// <param name="config">The Azure config.</param>
-        private CloudStorageAccount CreateStorageAccount()
+        public CloudStorageAccount CreateOrGetStorageAccount(AzureClient azureClient)
         {
-            string rgName = this.azureClient.ResourceGroup;
+            string rgName = azureClient.ResourceGroup;
             var storage = azureClient.azure.StorageAccounts.Define(azureClient.StorageAccountName)
-                .WithRegion(this.azureClient.Region)
+                .WithRegion(azureClient.Region)
                 .WithExistingResourceGroup(rgName)
                 .Create();
 
             var storageKeys = storage.GetKeys();
-            return CloudStorageAccount.Parse(string.Format(StorageConStringFormat, this.azureClient.StorageAccountName, storageKeys[0].Value));
+            return CloudStorageAccount.Parse(string.Format(connectionStringFormat, azureClient.StorageAccountName, storageKeys[0].Value));
         }
 
-        /// <summary>Create new table for given storage account.</summary>
-        /// <param name="tableName">The table name.</param>
-        public async Task<CloudTable> CreateOrGetTable(string tableName)
+        public async Task<CloudTable> CreateOrGetTableAsync(CloudStorageAccount storageAccount, string tableName)
         {
-            try
-            {
-                if (this.tableClient == null)
-                {
-                    throw new ArgumentNullException("Table client is null");
-                }
+            var tableClient = storageAccount.CreateCloudTableClient(); ;
 
-                // Retrieve a reference to the table.
-                CloudTable table = this.tableClient.GetTableReference(tableName);
+            // Retrieve a reference to the table.
+            CloudTable table = tableClient.GetTableReference(tableName);
 
-                // Create the table if it doesn't exist.
-                await table.CreateIfNotExistsAsync();
-                return table;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
+            // Create the table if it doesn't exist.
+            await table.CreateIfNotExistsAsync();
+            return table;
         }
 
-        /// <summary>Insert or merge the entity into the table</summary>
-        /// <typeparam name="T">Type of the Entity</typeparam>
-        /// <param name="entity">The Entity</param>
-        /// <param name="tableName">The Table name.</param>
-        /// <returns></returns>
-        public async Task InsertOrMerge<T>(T entity, string tableName) where T : ITableEntity
+        public CloudTable CreateOrGetTable(CloudStorageAccount storageAccount, string tableName)
         {
-            try
+            var tableClient = storageAccount.CreateCloudTableClient(); ;
+
+            // Retrieve a reference to the table.
+            CloudTable table = tableClient.GetTableReference(tableName);
+
+            // Create the table if it doesn't exist.
+            Extensions.Synchronize(() => table.CreateIfNotExistsAsync());
+
+            return table;
+        }
+
+        public async Task InsertOrMergeAsync<T>(T entity, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity
+        {
+            var table = await CreateOrGetTableAsync(storageAccount, tableName);
+            if (table == null)
             {
-                var table = await CreateOrGetTable(tableName);
-                if (table == null)
+                return;
+            }
+
+            TableOperation tableOperation = TableOperation.InsertOrMerge(entity);
+            await table.ExecuteAsync(tableOperation);
+        }
+
+        public void InsertOrMerge<T>(T entity, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity
+        {
+            var table = CreateOrGetTable(storageAccount, tableName);
+            if (table == null)
+            {
+                return;
+            }
+
+            TableOperation tableOperation = TableOperation.InsertOrMerge(entity);
+            Extensions.Synchronize(() => table.ExecuteAsync(tableOperation));
+        }
+
+        public async Task<IEnumerable<T>> GetEntitiesAsync<T>(TableQuery<T> query, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity, new()
+        {
+            if (query == null)
+            {
+                return null;
+            }
+
+            var table = CreateOrGetTable(storageAccount, tableName);
+            if (table == null)
+            {
+                return null;
+            }
+
+            TableContinuationToken continuationToken = null;
+            IEnumerable<T> results = null;
+            do
+            {
+                var result = await table.ExecuteQuerySegmentedAsync<T>(query, continuationToken);
+                if (result != null)
                 {
-                    return;
+                    results = results.Concat(result.Results);
                 }
 
-                TableOperation tableOperation = TableOperation.InsertOrMerge(entity);
-                await table.ExecuteAsync(tableOperation);
-            }
-            catch (Exception ex)
+                continuationToken = result.ContinuationToken;
+            } while (continuationToken != null);
+
+            return results;
+        }
+
+        public IEnumerable<T> GetEntities<T>(TableQuery<T> query, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity, new()
+        {
+            if (query == null)
             {
-                throw ex;
+                return null;
             }
+
+            var table = CreateOrGetTable(storageAccount, tableName);
+            if (table == null)
+            {
+                return null;
+            }
+
+            TableContinuationToken continuationToken = null;
+            IEnumerable<T> results = null;
+            do
+            {
+                var result = Extensions.Synchronize(() => table.ExecuteQuerySegmentedAsync<T>(query, continuationToken));
+                if (result != null)
+                {
+                    results = results.Concat(result.Results);
+                }
+
+                continuationToken = result.ContinuationToken;
+            } while (continuationToken != null);
+
+            return results;
         }
     }
 }

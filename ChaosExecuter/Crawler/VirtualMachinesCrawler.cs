@@ -19,7 +19,7 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachinesCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         /// <summary>Crawl the virtual machines under the all the resource group.</summary>
         /// <param name="req">The http request</param>
@@ -51,9 +51,10 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (batchOperation.Count > 0)
                 {
-                    CloudTable table = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }

@@ -9,14 +9,13 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
     public static class VirtualMachineScaleSetTimerCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachinescaleset")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -34,8 +33,6 @@ namespace ChaosExecuter.Crawler
                     VMScaleSetCrawlerResponseEntity vmScaletSetEntity = null;
                     try
                     {
-
-
                         foreach (var item in scaleSets)
                         {
                             // insert the scale set details into table
@@ -62,14 +59,16 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (scaleSetbatchOperation.Count > 0)
                 {
-                    CloudTable scaleSetTable = await storageProvider.CreateOrGetTable(azureClient.ScaleSetCrawlerTableName);
+                    CloudTable scaleSetTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ScaleSetCrawlerTableName);
                     await scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
                 }
+
                 if (vmbatchOperation.Count > 0)
                 {
-                    CloudTable vmTable = await storageProvider.CreateOrGetTable(azureClient.VirtualMachineCrawlerTableName);
+                    CloudTable vmTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await vmTable.ExecuteBatchAsync(vmbatchOperation);
                 }
             }

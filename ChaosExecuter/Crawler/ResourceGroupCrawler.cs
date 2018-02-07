@@ -15,7 +15,7 @@ namespace ChaosExecuter.Crawler
     public static class ResourceGroupCrawler
     {
         private static AzureClient azureClient = new AzureClient();
-        private static StorageAccountProvider storageProvider = new StorageAccountProvider(azureClient);
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("crawlresourcesgroups")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "crawlresourcesgroups")]HttpRequestMessage req, TraceWriter log)
@@ -44,9 +44,10 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (batchOperation.Count > 0)
                 {
-                    CloudTable table = await storageProvider.CreateOrGetTable(azureClient.ResourceGroupCrawlerTableName);
+                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ResourceGroupCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }
@@ -55,8 +56,6 @@ namespace ChaosExecuter.Crawler
                 log.Error($"ResourceGroup Crawler function Throwed the exception ", ex, "RGCrawler");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
-
-
 
             return req.CreateResponse(HttpStatusCode.OK);
         }

@@ -1,16 +1,13 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using AzureChaos.Entity;
-using System.ComponentModel.DataAnnotations;
-using AzureChaos.Enums;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AzureChaos.Entity
 {
     public class ResourceGroupCrawlerResponseEntity : CrawlerResponseEntity
     {
-        public ResourceGroupCrawlerResponseEntity() { }
+        public ResourceGroupCrawlerResponseEntity()
+        {
+        }
+
         public ResourceGroupCrawlerResponseEntity(string partitionKey, string rowKey)
         {
             this.PartitionKey = partitionKey;
