@@ -8,7 +8,7 @@ namespace AzureChaos.Providers
 {
     public interface IStorageAccountProvider
     {
-        Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureClient azureClient);
+        Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureSettings azureSettings);
 
         CloudStorageAccount CreateOrGetStorageAccount(AzureClient azureClient);
 

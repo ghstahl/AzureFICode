@@ -1,4 +1,5 @@
 using AzureChaos.Helper;
+using AzureChaos.Interfaces;
 using AzureChaos.Models;
 using AzureChaos.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
@@ -31,9 +32,10 @@ namespace ChaosExecuter.Crawler
             log.Info("VirtualMachinesCrawler function processed a request.");
             try
             {
-                TableBatchOperation batchOperation = new TableBatchOperation();
+                var azureSettings = azureClient.azureSettings;
                 // will be listing out only the standalone virtual machines.
                 List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(azureClient.azure);
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 foreach (string resourceGroup in resourceGroupList)
                 {
                     List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup);
@@ -45,17 +47,24 @@ namespace ChaosExecuter.Crawler
 
                     var virtualMachines = pagedCollection.Select(x => x).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId) &&
                     !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
-                    foreach (IVirtualMachine virtualMachine in virtualMachines)
-                    {
-                        batchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
-                    }
-                }
 
-                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
-                if (batchOperation.Count > 0)
-                {
-                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
-                    await table.ExecuteBatchAsync(batchOperation);
+                    /// Unique key of the table entry will be calculated based on the resourcegroup(as partitionkey) and resource name(as row key).
+                    /// So here grouping is needed, since vm groups can be different, table batch operation will not be allowing the different partition keys(i.e. group name can be different) in one batch operation
+                    var groupByResourceGroupName = virtualMachines.GroupBy(x => x.ResourceGroupName).ToList();
+                    foreach (var groupItem in groupByResourceGroupName)
+                    {
+                        TableBatchOperation batchOperation = new TableBatchOperation();
+                        foreach (IVirtualMachine virtualMachine in groupItem)
+                        {
+                            batchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, virtualMachine.ResourceGroupName));
+                        }
+
+                        if (batchOperation.Count > 0)
+                        {
+                            CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+                            await table.ExecuteBatchAsync(batchOperation);
+                        }
+                    }
                 }
             }
             catch (Exception ex)

@@ -23,6 +23,9 @@ namespace AzureChaos.Entity
         /// <summary>The Resource name.</summary>
         public string Resource { get; set; }
 
+        /// <summary>The Resource name.</summary>
+        public string Id { get; set; }
+
         [Required]
         /// <summary>Resource Group name </summary>
         public string ResourceGroup { get; set; }

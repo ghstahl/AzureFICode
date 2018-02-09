@@ -12,6 +12,9 @@
             this.RowKey = rowKey;
         }
 
+        /// <summary>Power state of the resource.</summary>
+        public string State { get; set; }
+
         /// <summary>Available Set Id. i.e. Vm belongs to which avaiable set if any.</summary>
         public string AvailableSetId { get; set; }
 
@@ -26,5 +29,8 @@
 
         /// <summary>The virtual machine group name i.e. the virtual machine belongs to which resource type ex. is it from Available Set, Scale Set  or Load balancers etc...</summary>
         public string VirtualMachineGroup { get; set; }
+
+        /// <summary> Availability Zone for which the Virtual Machine belongs to </summary>
+        public int? AvailabilityZone { get; set; }
     }
 }

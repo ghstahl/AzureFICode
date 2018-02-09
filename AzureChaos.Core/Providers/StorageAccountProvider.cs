@@ -17,21 +17,22 @@ namespace AzureChaos.Providers
         /// <summary>Default format for the storage connection string.</summary>
         private const string connectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        public Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureClient azureClient)
+        public Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureSettings azureSettings)
         {
             throw new NotImplementedException();
         }
 
         public CloudStorageAccount CreateOrGetStorageAccount(AzureClient azureClient)
         {
-            string rgName = azureClient.ResourceGroup;
-            var storage = azureClient.azure.StorageAccounts.Define(azureClient.StorageAccountName)
-                .WithRegion(azureClient.Region)
+            var azureSettings = azureClient.azureSettings;
+            string rgName = azureSettings.Client.ResourceGroup;
+            var storage = azureClient.azure.StorageAccounts.Define(azureSettings.Client.StorageAccountName)
+                .WithRegion(azureSettings.Client.Region)
                 .WithExistingResourceGroup(rgName)
                 .Create();
 
             var storageKeys = storage.GetKeys();
-            return CloudStorageAccount.Parse(string.Format(connectionStringFormat, azureClient.StorageAccountName, storageKeys[0].Value));
+            return CloudStorageAccount.Parse(string.Format(connectionStringFormat, azureSettings.Client.StorageAccountName, storageKeys[0].Value));
         }
 
         public async Task<CloudTable> CreateOrGetTableAsync(CloudStorageAccount storageAccount, string tableName)
@@ -130,9 +131,13 @@ namespace AzureChaos.Providers
             do
             {
                 var result = Extensions.Synchronize(() => table.ExecuteQuerySegmentedAsync<T>(query, continuationToken));
-                if (result != null)
+                if (results != null)
                 {
                     results = results.Concat(result.Results);
+                }
+                else
+                {
+                    results = result;
                 }
 
                 continuationToken = result.ContinuationToken;

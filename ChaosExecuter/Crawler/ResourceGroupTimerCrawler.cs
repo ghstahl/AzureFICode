@@ -10,27 +10,28 @@ namespace ChaosExecuter.Crawler
 {
     public static class ResourceGroupTimerCrawler
     {
-        private static AzureClient azureClient = new AzureClient();
-        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static readonly AzureClient AzureClient = new AzureClient();
+        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerresourcegroups")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.Now}");
             TableBatchOperation batchOperation = new TableBatchOperation();
+            var azureSettings = AzureClient.azureSettings;
             try
             {
-                var resourceGroups = azureClient.azure.ResourceGroups.List();
+                var resourceGroups = AzureClient.azure.ResourceGroups.List();
                 foreach (var resourceGroup in resourceGroups)
                 {
-                    ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("CrawlRGs", Guid.NewGuid().ToString());
+                    ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("crawlrg", resourceGroup.Id.Replace("/", "-"));
                     try
                     {
                         resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
                         resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
                         resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
                         resourceGroupCrawlerResponseEntity.ResourceGroupName = resourceGroup.Name;
-                        batchOperation.Insert(resourceGroupCrawlerResponseEntity);
+                        batchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
                     }
                     catch (Exception ex)
                     {
@@ -44,10 +45,10 @@ namespace ChaosExecuter.Crawler
                 log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
             }
 
-            var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
+            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             if (batchOperation.Count > 0)
             {
-                CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ResourceGroupCrawlerTableName);
+                CloudTable table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ResourceGroupCrawlerTableName);
                 await table.ExecuteBatchAsync(batchOperation);
             }
         }

@@ -14,8 +14,8 @@ namespace ChaosExecuter.Crawler
 {
     public static class AvailabilitySetsTimerCrawler
     {
-        private static AzureClient azureClient = new AzureClient();
-        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static readonly AzureClient AzureClient = new AzureClient();
+        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforavailabilitysets")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -23,67 +23,74 @@ namespace ChaosExecuter.Crawler
             log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.Now}");
             try
             {
-                var availability_sets = azureClient.azure.AvailabilitySets.List();
-                TableBatchOperation availabilitySetBatchOperation = new TableBatchOperation();
-                TableBatchOperation virtualMachineBatchOperation = new TableBatchOperation();
-                foreach (var availabilitySet in availability_sets)
+                var azureSettings = AzureClient.azureSettings;
+                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
+                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
+                foreach (string resourceGroup in resourceGroupList)
                 {
-                    AvailabilitySetsCrawlerResponseEntity availabilitySetsCrawlerResponseEntity = new AvailabilitySetsCrawlerResponseEntity("CrawlAS", Guid.NewGuid().ToString());
-                    try
+                    var availability_sets = await AzureClient.azure.AvailabilitySets.ListByResourceGroupAsync(resourceGroup);
+                    TableBatchOperation availabilitySetBatchOperation = new TableBatchOperation();
+                    TableBatchOperation virtualMachineBatchOperation = new TableBatchOperation();
+                    foreach (var availabilitySet in availability_sets)
                     {
-                        availabilitySetsCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
-                        availabilitySetsCrawlerResponseEntity.Id = availabilitySet.Id;
-                        availabilitySetsCrawlerResponseEntity.RegionName = availabilitySet.RegionName;
-                        availabilitySetsCrawlerResponseEntity.ResourceGroupName = availabilitySet.Name;
-                        availabilitySetsCrawlerResponseEntity.FaultDomainCount = availabilitySet.FaultDomainCount;
-                        availabilitySetsCrawlerResponseEntity.UpdateDomainCount = availabilitySet.UpdateDomainCount;
-                        if (availabilitySet.Inner.VirtualMachines.Count != 0)
+                        AvailabilitySetsCrawlerResponseEntity availabilitySetsCrawlerResponseEntity = new AvailabilitySetsCrawlerResponseEntity(availabilitySet.ResourceGroupName, availabilitySet.Name.ToString());
+                        try
                         {
-                            if (availabilitySet.Inner.VirtualMachines.Count > 0)
+                            availabilitySetsCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
+                            availabilitySetsCrawlerResponseEntity.Id = availabilitySet.Id;
+                            availabilitySetsCrawlerResponseEntity.RegionName = availabilitySet.RegionName;
+                            availabilitySetsCrawlerResponseEntity.ResourceGroupName = availabilitySet.Name;
+                            availabilitySetsCrawlerResponseEntity.FaultDomainCount = availabilitySet.FaultDomainCount;
+                            availabilitySetsCrawlerResponseEntity.UpdateDomainCount = availabilitySet.UpdateDomainCount;
+                            if (availabilitySet.Inner.VirtualMachines.Count != 0)
                             {
-                                List<string> virtualMachinesSet = new List<string>();
-                                foreach (var vm_in_as in availabilitySet.Inner.VirtualMachines)
+                                if (availabilitySet.Inner.VirtualMachines.Count > 0)
                                 {
-                                    virtualMachinesSet.Add(vm_in_as.Id.Split('/')[8]);
+                                    List<string> virtualMachinesSet = new List<string>();
+                                    foreach (var vm_in_as in availabilitySet.Inner.VirtualMachines)
+                                    {
+                                        virtualMachinesSet.Add(vm_in_as.Id.Split('/')[8]);
+                                    }
+                                    availabilitySetsCrawlerResponseEntity.Virtualmachines = string.Join(",", virtualMachinesSet);
                                 }
-                                availabilitySetsCrawlerResponseEntity.Virtualmachines = string.Join(",", virtualMachinesSet);
                             }
-                        }
 
-                        var virtualMachinesList = azureClient.azure.VirtualMachines.ListByResourceGroup(availabilitySet.ResourceGroupName
-                            ).Where(x => x.AvailabilitySetId == availabilitySet.Id);
-                        foreach (var virtualMachine in virtualMachinesList)
+                            var virtualMachinesList = AzureClient.azure.VirtualMachines.ListByResourceGroup(availabilitySet.ResourceGroupName
+                                ).Where(x => x.AvailabilitySetId == availabilitySet.Id);
+                            var partitionKey = availabilitySet.Id.Replace('/', '!');
+                            foreach (var virtualMachine in virtualMachinesList)
+                            {
+                                var virtualMachineEntity = VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, partitionKey, availabilitySet.ResourceGroupName);
+                                virtualMachineEntity.VirtualMachineGroup = VirtualMachineGroup.AvailabilitySets.ToString();
+                                virtualMachineBatchOperation.InsertOrReplace(virtualMachineEntity);
+                            }
+
+                            availabilitySetBatchOperation.InsertOrReplace(availabilitySetsCrawlerResponseEntity);
+                        }
+                        catch (Exception ex)
                         {
-                            var virtualMachineEntity = VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, availabilitySet.ResourceGroupName);
-                            virtualMachineEntity.VirtualMachineGroup = VirtualMachineGroup.AvailabilitySets.ToString();
-                            virtualMachineBatchOperation.Insert(virtualMachineEntity);
+                            availabilitySetsCrawlerResponseEntity.Error = ex.Message;
+                            log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
                         }
-
-                        availabilitySetBatchOperation.Insert(availabilitySetsCrawlerResponseEntity);
                     }
-                    catch (Exception ex)
+
+                    if (availabilitySetBatchOperation.Count > 0)
                     {
-                        availabilitySetsCrawlerResponseEntity.Error = ex.Message;
-                        log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
+                        CloudTable availabilitySetTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
+                        await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
                     }
-                }
 
-                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
-                if (availabilitySetBatchOperation.Count > 0)
-                {
-                    CloudTable availabilitySetTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.AvailabilitySetCrawlerTableName);
-                    await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
-                }
-                if (virtualMachineBatchOperation.Count > 0)
-                {
-                    CloudTable virtualMachineTable = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
-                    await virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
+                    if (virtualMachineBatchOperation.Count > 0)
+                    {
+                        CloudTable virtualMachineTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+                        await virtualMachineTable.ExecuteBatchAsync(virtualMachineBatchOperation);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
-                throw ex;
+                //throw ex;
             }
         }
     }

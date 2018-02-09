@@ -5,11 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Constants\**" />
     <Compile Remove="Crawler\**" />
-    <EmbeddedResource Remove="Constants\**" />
     <EmbeddedResource Remove="Crawler\**" />
-    <None Remove="Constants\**" />
     <None Remove="Crawler\**" />
   </ItemGroup>
 

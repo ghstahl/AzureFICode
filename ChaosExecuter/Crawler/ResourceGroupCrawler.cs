@@ -14,8 +14,8 @@ namespace ChaosExecuter.Crawler
 {
     public static class ResourceGroupCrawler
     {
-        private static AzureClient azureClient = new AzureClient();
-        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static readonly AzureClient AzureClient = new AzureClient();
+        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("crawlresourcesgroups")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "crawlresourcesgroups")]HttpRequestMessage req, TraceWriter log)
@@ -24,17 +24,18 @@ namespace ChaosExecuter.Crawler
             TableBatchOperation batchOperation = new TableBatchOperation();
             try
             {
-                var resourceGroups = azureClient.azure.ResourceGroups.List();
+                var azureSettings = AzureClient.azureSettings;
+                var resourceGroups = await AzureClient.azure.ResourceGroups.ListAsync();
                 foreach (var resourceGroup in resourceGroups)
                 {
-                    ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("CrawlRGs", Guid.NewGuid().ToString());
+                    ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("crawlrg", resourceGroup.Id.Replace("/", "!"));
                     try
                     {
                         resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
                         resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
                         resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
                         resourceGroupCrawlerResponseEntity.ResourceGroupName = resourceGroup.Name;
-                        batchOperation.Insert(resourceGroupCrawlerResponseEntity);
+                        batchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
                     }
                     catch (Exception ex)
                     {
@@ -44,10 +45,10 @@ namespace ChaosExecuter.Crawler
                     }
                 }
 
-                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
+                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
                 if (batchOperation.Count > 0)
                 {
-                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.ResourceGroupCrawlerTableName);
+                    CloudTable table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ResourceGroupCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }

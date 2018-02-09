@@ -41,10 +41,10 @@ namespace AzureChaos.Interfaces
             throw new NotImplementedException();
         }
 
-        public bool IsChaosEnabled(AzureClient azureClient)
+        public bool IsChaosEnabled(AzureSettings azureSettings)
         {
-            if (azureClient == null || azureClient.azureSettings == null || azureClient.azureSettings.Chaos == null || !azureClient.azureSettings.Chaos.ChaosEnabled
-                || azureClient.azureSettings.Chaos.AvailabilitySetChaos == null || !azureClient.azureSettings.Chaos.AvailabilitySetChaos.Enabled)
+            if (azureSettings?.Chaos == null || !azureSettings.Chaos.ChaosEnabled
+                || azureSettings.Chaos.AvailabilitySetChaos == null || !azureSettings.Chaos.AvailabilitySetChaos.Enabled)
             {
                 return false;
             }
@@ -52,7 +52,8 @@ namespace AzureChaos.Interfaces
             return true;
         }
 
-        private async Task<IEnumerable<AvailabilitySetsCrawlerResponseEntity>> GetResourcesAsync(AzureClient azureClient)
+        //TODO (Nithin)
+        private async Task<IEnumerable<AvailabilitySetsCrawlerResponseEntity>> GetResourcesAsync(AzureSettings azureSettings)
         {
             if (storageAccount == null)
             {
@@ -61,10 +62,11 @@ namespace AzureChaos.Interfaces
 
             TableQuery<AvailabilitySetsCrawlerResponseEntity> query = new TableQuery<AvailabilitySetsCrawlerResponseEntity>();
             var filter = TableQuery.CombineFilters("Virtualmachines", QueryComparisons.NotEqual, string.Empty);
-            return await this.storageAccountProvider.GetEntitiesAsync<AvailabilitySetsCrawlerResponseEntity>(query, this.storageAccount, azureClient.AvailabilitySetCrawlerTableName);
+            return await this.storageAccountProvider.GetEntitiesAsync<AvailabilitySetsCrawlerResponseEntity>(query, this.storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
         }
 
-        private IEnumerable<AvailabilitySetsCrawlerResponseEntity> GetResources(AzureClient azureClient)
+        //TODO (Nithin)
+        private IEnumerable<AvailabilitySetsCrawlerResponseEntity> GetResources(AzureSettings azureSettings)
         {
             if (storageAccount == null)
             {
@@ -73,7 +75,7 @@ namespace AzureChaos.Interfaces
 
             TableQuery<AvailabilitySetsCrawlerResponseEntity> query = new TableQuery<AvailabilitySetsCrawlerResponseEntity>();
             var filter = TableQuery.CombineFilters("Virtualmachines", QueryComparisons.NotEqual, string.Empty);
-            var results = this.storageAccountProvider.GetEntities<AvailabilitySetsCrawlerResponseEntity>(query, this.storageAccount, azureClient.AvailabilitySetCrawlerTableName);
+            var results = this.storageAccountProvider.GetEntities<AvailabilitySetsCrawlerResponseEntity>(query, this.storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
             return results;
         }
     }
