@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AzureChaos.Enums
+﻿namespace AzureChaos.Enums
 {
     public enum VirtualMachineGroup
     {

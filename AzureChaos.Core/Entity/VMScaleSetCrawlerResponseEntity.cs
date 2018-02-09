@@ -11,5 +11,7 @@
             this.PartitionKey = partitionKey;
             this.RowKey = rowKey;
         }
+
+        public int? AvailabilityZone { get; set; }
     }
 }

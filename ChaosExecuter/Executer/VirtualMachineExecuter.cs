@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using System;
-using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -21,9 +20,9 @@ namespace ChaosExecuter.Executer
     public static class VirtualMachineExecuter
     {
         /// <summary>Azure Configuration.</summary>
-        private static AzureClient azureClient = new AzureClient();
+        private static readonly AzureClient AzureClient = new AzureClient();
 
-        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
+        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
@@ -33,7 +32,7 @@ namespace ChaosExecuter.Executer
         [FunctionName("vmexecuter")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "vmexecuter")]HttpRequestMessage req, TraceWriter log)
         {
-            if (req == null || req.Content == null)
+            if (req?.Content == null)
             {
                 log.Info($"VM Chaos trigger function request parameter is empty.");
                 return req.CreateResponse(HttpStatusCode.BadRequest, "Request is empty");
@@ -42,27 +41,25 @@ namespace ChaosExecuter.Executer
             log.Info($"VM Chaos trigger function processed a request. RequestUri= { req.RequestUri }");
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<InputObject>();
-            ActionType action;
-            if (data == null || !Enum.TryParse(data?.Action.ToString(), out action) || string.IsNullOrWhiteSpace(data?.ResourceName)
+            if (data == null || !Enum.TryParse(data?.Action.ToString(), out ActionType action) || string.IsNullOrWhiteSpace(data?.ResourceName)
                 || string.IsNullOrWhiteSpace(data?.ResourceGroup))
             {
                 return req.CreateErrorResponse(HttpStatusCode.BadRequest, "Invalid Action/Resource/ResourceGroup");
             }
 
             EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceName);
-            var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
+            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             try
             {
-                IVirtualMachine virtualMachine = await GetVirtualMachine(azureClient.azure, data.ResourceGroup, data.ResourceName);
+                IVirtualMachine virtualMachine = await GetVirtualMachine(AzureClient.azure, data.ResourceGroup, data.ResourceName);
                 log.Info($"VM Chaos trigger function Processing the action= " + data?.Action);
 
                 /// checking the provisiong state before the starting the chaos, if its already in the failed or in-progress state, then we will not be doing any chaos.
-                ProvisioningState provisioningState;
-                if (!Enum.TryParse(virtualMachine.ProvisioningState, out provisioningState) && provisioningState != ProvisioningState.Succeeded)
+                if (!Enum.TryParse(virtualMachine.ProvisioningState, out ProvisioningState provisioningState) && provisioningState != ProvisioningState.Succeeded)
                 {
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Error = "Current VM in the state of " + virtualMachine.ProvisioningState + ". Couldnot perform the Chaos";
-                    await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
+                    await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
                     return req.CreateResponse(HttpStatusCode.PreconditionFailed, "Current VM in the state of " + virtualMachine.ProvisioningState + ". Couldnot perform the Chaos");
                 }
 
@@ -73,26 +70,26 @@ namespace ChaosExecuter.Executer
                 {
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = WarningMessageOnSameState;
-                    await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
+                    await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
                     return req.CreateResponse(HttpStatusCode.BadRequest);
                 }
 
                 await PerformChaos(data.Action, virtualMachine, eventActivity, storageAccount);
-                virtualMachine = await GetVirtualMachine(azureClient.azure, data.ResourceGroup, data.ResourceName); // virtualMachine.RefreshAsync();
+                virtualMachine = await GetVirtualMachine(AzureClient.azure, data.ResourceGroup, data.ResourceName); // virtualMachine.RefreshAsync();
                 if (virtualMachine != null)
                 {
                     eventActivity.EventCompletedDate = DateTime.UtcNow;
                     eventActivity.FinalState = virtualMachine.PowerState.Value;
                 }
 
-                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
+                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
                 return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
-                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
+                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
                 log.Error($"VM Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
@@ -106,7 +103,7 @@ namespace ChaosExecuter.Executer
         private static async Task PerformChaos(ActionType actionType, IVirtualMachine virtualMachine, EventActivityEntity eventActivity, CloudStorageAccount storageAccount)
         {
             eventActivity.Status = Status.Started.ToString();
-            await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
+            await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
             switch (actionType)
             {
                 case ActionType.Start:

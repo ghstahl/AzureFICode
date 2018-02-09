@@ -21,12 +21,15 @@ namespace AzureChaos.Models
         public string AvailibilitySet { get; set; }
 
         /// <summary>Fault Domain Number in AvailibilitySet  to be passed</summary>
-        public string FaultDomain { get; set;  }
+        public bool FaultDomain { get; set; }
 
         /// <summary>Update Domain Number in AvailibilitySet  to be passed</summary>
-        public string UpdateDomain { get; set; }
+        public bool UpdateDomain { get; set; }
 
         /// <summary>Percntage of VMs to be under Action</summary>
         public int VMPercentage { get; set; }
+
+        /// <summary>Resource Type for which Rule Engine is Triggered</summary>
+        public string ResourceType { get; set; }
     }
 }

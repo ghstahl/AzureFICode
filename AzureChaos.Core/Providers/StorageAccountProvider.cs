@@ -2,10 +2,12 @@
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Management.Fluent;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Management.Storage.Fluent;
 
 namespace AzureChaos.Providers
 {
