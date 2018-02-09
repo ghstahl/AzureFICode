@@ -28,8 +28,4 @@
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Trigger\" />
-    <Folder Include="Schedulers\" />
-  </ItemGroup>
 </Project>

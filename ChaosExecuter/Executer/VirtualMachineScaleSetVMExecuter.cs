@@ -19,15 +19,15 @@ namespace ChaosExecuter.Executer
     public static class VirtualMachineScaleSetVMExecuter
     {
         /// <summary>Azure Configuration.</summary>
-        private static readonly AzureClient AzureClient = new AzureClient();
+        private static AzureClient azureClient = new AzureClient();
 
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
 
         [FunctionName("scalesetvmexecuter")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "scalesetvmexecuter")]HttpRequestMessage req, TraceWriter log)
         {
-            if (req?.Content == null)
+            if (req == null || req.Content == null)
             {
                 log.Info($"VMScaleSet Chaos trigger function request parameter is empty.");
                 return req.CreateResponse(HttpStatusCode.BadRequest, "Request is empty");
@@ -36,17 +36,18 @@ namespace ChaosExecuter.Executer
             log.Info($"VMScaleSet Chaos trigger function processed a request. RequestUri= { req.RequestUri }");
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<InputObject>();
-            if (data == null || !Enum.TryParse(data?.Action.ToString(), out ActionType action) || string.IsNullOrWhiteSpace(data?.ResourceName)
+            ActionType action;
+            if (data == null || !Enum.TryParse(data?.Action.ToString(), out action) || string.IsNullOrWhiteSpace(data?.ResourceName)
                 || string.IsNullOrWhiteSpace(data?.ResourceGroup) || string.IsNullOrWhiteSpace(data?.ScaleSetName))
             {
                 return req.CreateResponse(HttpStatusCode.BadRequest, "Invalid Action/Resource/ResourceGroup/ScalesetName");
             }
 
             EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceGroup);
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
+            var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
             try
             {
-                IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(AzureClient.azure, data.ResourceGroup, data.ResourceName, data.ScaleSetName);
+                IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(azureClient.azure, data.ResourceGroup, data.ResourceName, data.ScaleSetName);
                 log.Info($"VMScaleSet Chaos trigger function Processing the action= " + data.Action);
                 SetInitialEventActivity(scaleSetVM, data, eventActivity);
 
@@ -56,7 +57,7 @@ namespace ChaosExecuter.Executer
                 {
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = WarningMessageOnSameState;
-                    await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
+                    await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                     return req.CreateResponse(HttpStatusCode.BadRequest);
                 }
 
@@ -68,13 +69,13 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = scaleSetVM.PowerState.Value;
                 }
 
-                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
+                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                 return req.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
-                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
+                await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
                 log.Error($"VMScaleSet Chaos trigger function Throw the exception ", ex, "VMChaos");
                 return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
@@ -108,7 +109,7 @@ namespace ChaosExecuter.Executer
         private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivityEntity eventActivity, CloudStorageAccount storageAccount)
         {
             eventActivity.Status = Status.Started.ToString();
-            await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, AzureClient.ActivityLogTable);
+            await storageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureClient.ActivityLogTable);
             switch (actionType)
             {
                 case ActionType.Start:

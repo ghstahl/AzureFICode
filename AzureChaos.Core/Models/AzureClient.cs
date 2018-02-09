@@ -5,7 +5,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 
 namespace AzureChaos.Models
 {
@@ -25,7 +24,7 @@ namespace AzureChaos.Models
             ///Zen3 subscription blob endpoint for configs: ==>  https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json
             /// Microsoft demo config file ==> https://stachaosteststorage.blob.core.windows.net/configs/azuresettings.json
 
-            this.azureSettings = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest("https://cmnewschema.blob.core.windows.net/configs/azuresettings.json"));
+            this.azureSettings = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest("https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json"));
             this.SubscriptionId = azureSettings.Client.SubscriptionId; //ConfigurationManager.AppSettings["SubscriptionId"];
             this.ClientId = azureSettings.Client.ClientId; //ConfigurationManager.AppSettings["ClientId"];
             this.ClientSecret = azureSettings.Client.ClientSecret; //ConfigurationManager.AppSettings["ClientSecret"];
@@ -39,12 +38,6 @@ namespace AzureChaos.Models
             this.ScaleSetCrawlerTableName = azureSettings.ScaleSetCrawlerTableName; //ConfigurationManager.AppSettings["ScaleSetCrawlerTableName"];
             this.AvailabilityZoneCrawlerTableName = azureSettings.AvailabilityZoneCrawlerTableName; //ConfigurationManager.AppSettings["AvailabilityZoneCrawlerTableName"];
             this.ActivityLogTable = azureSettings.ActivityLogTable; //ConfigurationManager.AppSettings["ActivityLogTable"];
-            this.ScheduledRulesTable = azureSettings.ScheduledRulesTable;
-            this.EnableAvailabilitySet = azureSettings.Chaos.AvailabilitySetChaos.Enabled;
-            this.EnableFaultDomain = azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled;
-            this.EnableUpdateDomain = azureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
-            this.EnableAvailabilityZone = azureSettings.Chaos.AvailabilityZoneChaos.Enabled;
-            this.AvailabileZoneRegions = azureSettings.Chaos.AvailabilityZoneChaos.Regions;
             this.azure = GetAzure(this.ClientId, this.ClientSecret, this.TenantId);
         }
 
@@ -85,24 +78,7 @@ namespace AzureChaos.Models
         public string ActivityLogTable { get; set; }
 
         /// <summary>The Azure subscription id.</summary>
-        public string ScheduledRulesTable { get; set; }
-
-        /// <summary>The Azure subscription id.</summary>
         public string StorageAccountName { get; set; }
-
-        /// <summary>Is Availability Set Enabled for Rule Engine</summary>
-        public bool EnableAvailabilitySet { get; set; }
-
-        /// <summary>Is Fault Domain of Availability Set Enabled for Rule Engine</summary>
-        public bool EnableFaultDomain { get; set; }
-
-        /// <summary>Is Update Domain Availability Set Enabled for Rule Engine</summary>
-        public bool EnableUpdateDomain { get; set; }
-
-        /// <summary>Is Availability Zone Enabled for Rule Engine</summary>
-        public bool EnableAvailabilityZone { get; set; }
-
-        public List<string> AvailabileZoneRegions { get; set; }
 
         /// <summary>Get the Azure object to read the all resources from azure</summary>
         /// <returns>Returns the Azure object.</returns>

@@ -43,7 +43,7 @@ namespace AzureChaos.Interfaces
 
         public bool IsChaosEnabled(AzureClient azureClient)
         {
-            if (azureClient?.azureSettings?.Chaos == null || !azureClient.azureSettings.Chaos.ChaosEnabled
+            if (azureClient == null || azureClient.azureSettings == null || azureClient.azureSettings.Chaos == null || !azureClient.azureSettings.Chaos.ChaosEnabled
                 || azureClient.azureSettings.Chaos.AvailabilitySetChaos == null || !azureClient.azureSettings.Chaos.AvailabilitySetChaos.Enabled)
             {
                 return false;

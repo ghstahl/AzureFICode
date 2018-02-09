@@ -26,8 +26,5 @@
 
         /// <summary>The virtual machine group name i.e. the virtual machine belongs to which resource type ex. is it from Available Set, Scale Set  or Load balancers etc...</summary>
         public string VirtualMachineGroup { get; set; }
-
-        /// <summary> Availability Zone for which the Virtual Machine belongs to </summary>
-        public int? AvailabilityZone { get; set; }
     }
 }

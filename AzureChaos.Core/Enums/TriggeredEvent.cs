@@ -1,4 +1,8 @@
-﻿namespace AzureChaos.Enums
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace AzureChaos.Enums
 {
     public enum TriggeredEvent
     {

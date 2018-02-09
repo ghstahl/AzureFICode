@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace AzureChaos.Models
 {
@@ -10,12 +12,6 @@ namespace AzureChaos.Models
 
         [JsonProperty("microsoft.chaos.leashed")]
         public bool Leashed { get; set; }
-
-        [JsonProperty("microsoft.chaos.scheduler.frequency")]
-        public int SchedulerFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawler.frequency")]
-        public int CrawlerFrequency { get; set; }
 
         #region Trigger settings -currently commented
 

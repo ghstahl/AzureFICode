@@ -14,8 +14,8 @@ namespace ChaosExecuter.Crawler
 {
     public static class VirtualMachineTimerCrawler
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
+        private static AzureClient azureClient = new AzureClient();
+        private static IStorageAccountProvider storageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachines")]
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
@@ -25,11 +25,11 @@ namespace ChaosExecuter.Crawler
             {
                 TableBatchOperation batchOperation = new TableBatchOperation();
                 // will be listing out only the standalone virtual machines.
-                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
+                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(azureClient.azure);
                 foreach (string resourceGroup in resourceGroupList)
                 {
                     List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup, log);
-                    var pagedCollection = await AzureClient.azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup);
+                    var pagedCollection = await azureClient.azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup);
                     if (pagedCollection == null || !pagedCollection.Any())
                     {
                         continue;
@@ -39,14 +39,14 @@ namespace ChaosExecuter.Crawler
                     !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
                     foreach (IVirtualMachine virtualMachine in virtualMachines)
                     {
-                        batchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
+                        batchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine));
                     }
                 }
 
-                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
+                var storageAccount = storageProvider.CreateOrGetStorageAccount(azureClient);
                 if (batchOperation.Count > 0)
                 {
-                    CloudTable table = await StorageProvider.CreateOrGetTableAsync(storageAccount, AzureClient.VirtualMachineCrawlerTableName);
+                    CloudTable table = await storageProvider.CreateOrGetTableAsync(storageAccount, azureClient.VirtualMachineCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }
@@ -63,7 +63,7 @@ namespace ChaosExecuter.Crawler
         {
             log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
             var vmIds = new List<string>();
-            var pagedCollection = await AzureClient.azure.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            var pagedCollection = await azureClient.azure.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
             if (pagedCollection == null)
             {
                 return vmIds;

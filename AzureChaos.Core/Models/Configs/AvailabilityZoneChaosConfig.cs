@@ -6,7 +6,7 @@ namespace AzureChaos.Models
     public class AvailabilityZoneChaosConfig
     {
         [JsonProperty("microsoft.chaos.AZ.enabled")]
-        public bool Enabled { get; set; }
+        public string Enabled { get; set; }
 
         [JsonProperty("microsoft.chaos.AZ.regions")]
         public List<string> Regions { get; set; }
