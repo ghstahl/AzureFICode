@@ -60,7 +60,13 @@ namespace AzureChaos.Interfaces
         private VMScaleSetCrawlerResponseEntity GetRandomScaleSet(IStorageAccountProvider storageAccountProvider, AzureSettings azureSettings, CloudStorageAccount storageAccount)
         {
             TableQuery<VMScaleSetCrawlerResponseEntity> vmScaleSetsQuery = new TableQuery<VMScaleSetCrawlerResponseEntity>();
-            var resultsSet = storageAccountProvider.GetEntities<VMScaleSetCrawlerResponseEntity>(vmScaleSetsQuery, storageAccount, azureSettings.ScaleSetCrawlerTableName);
+            var resultsSet = ResourceFilterHelper.QueryByMeanTime<VMScaleSetCrawlerResponseEntity>(storageAccount, storageAccountProvider, azureSettings,
+               azureSettings.ScaleSetCrawlerTableName);
+            if (resultsSet == null || !resultsSet.Any())
+            {
+                return null;
+            }
+
             Random random = new Random();
             var randomScaleSetIndex = random.Next(0, resultsSet.Count());
             return resultsSet.ToArray()[randomScaleSetIndex];
@@ -86,8 +92,8 @@ namespace AzureChaos.Interfaces
                 return null;
             }
 
-            var scheduleEntities = ResourceFilterHelper.QueryByMeanTime<ScheduleEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ScheduleTableName);
-            var scheduleEntitiesResourceIds = (scheduleEntities == null || !scheduleEntities.Any()) ? new List<string>() : scheduleEntities.Select(x => x.Id);
+            var scheduleEntities = ResourceFilterHelper.QueryByMeanTime<ScheduledRulesEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ScheduleTableName);
+            var scheduleEntitiesResourceIds = (scheduleEntities == null || !scheduleEntities.Any()) ? new List<string>() : scheduleEntities.Select(x => x.RowKey.Replace("!", "/"));
 
             var activityEntities = ResourceFilterHelper.QueryByMeanTime<EventActivityEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ActivityLogTable);
             var activityEntitiesResourceIds = (activityEntities == null || !activityEntities.Any()) ? new List<string>() : activityEntities.Select(x => x.Id);
