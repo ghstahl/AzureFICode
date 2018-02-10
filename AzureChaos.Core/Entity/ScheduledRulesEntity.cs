@@ -22,5 +22,6 @@ namespace AzureChaos.Entity
         public DateTime scheduledExecutionTime { get; set; }
         public string status { get; set; }
         public string chaosAction { get; set; }
+        public string combinationKey { get; set; }
     }
 }

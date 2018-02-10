@@ -2,7 +2,9 @@
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -58,6 +60,16 @@ namespace AzureChaos.Providers
             Extensions.Synchronize(() => table.CreateIfNotExistsAsync());
 
             return table;
+        }
+
+        public AzureSettings GetAzureSettings(CloudStorageAccount storageAccount, string container, string blobName)
+        {
+            var blobClinet = storageAccount.CreateCloudBlobClient();
+            var blobContainer = blobClinet.GetContainerReference(container);
+            var blobReference = blobContainer.GetBlockBlobReference(blobName);
+            var configData = blobReference.DownloadTextAsync();
+            var azureSettings = JsonConvert.DeserializeObject<AzureSettings>(configData.ToString());
+            return azureSettings;
         }
 
         public async Task InsertOrMergeAsync<T>(T entity, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity
@@ -146,4 +158,6 @@ namespace AzureChaos.Providers
             return results;
         }
     }
+
+
 }

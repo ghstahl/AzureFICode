@@ -1,12 +1,12 @@
-﻿using AzureChaos.Constants;
-using AzureChaos.ReguestHelpers;
+﻿using AzureChaos.Providers;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
+using Microsoft.WindowsAzure.Storage;
+using System.Threading.Tasks;
 
 namespace AzureChaos.Models
 {
@@ -14,6 +14,7 @@ namespace AzureChaos.Models
     /// and resource group needs to be crawled</summary>
     public class AzureClient
     {
+        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
         public IAzure azure;
 
         public AzureSettings azureSettings;
@@ -23,7 +24,8 @@ namespace AzureChaos.Models
         /// will be adding the storage account details in the azure function and will provide azure function
         public AzureClient()
         {
-            this.azureSettings = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest(Endpoints.ConfigEndpoint));
+            //this.azureSettings = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest(Endpoints.ConfigEndpoint));
+            this.azureSettings = GetAzureSettings();
             this.azure = GetAzure(azureSettings.Client.ClientId, azureSettings.Client.ClientSecret, azureSettings.Client.TenantId, azureSettings.Client.SubscriptionId);
         }
 
@@ -61,5 +63,28 @@ namespace AzureChaos.Models
             return SdkContext.AzureCredentialsFactory
                             .FromServicePrincipal(clientId, clientSecret, tenantId, AzureEnvironment.AzureGlobalCloud);
         }
+
+        private AzureSettings GetAzureSettings()
+        {
+            try
+            {
+                string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConnectionString);
+
+                var blobClinet = storageAccount.CreateCloudBlobClient();
+                var blobContainer = blobClinet.GetContainerReference("configs");
+                var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
+                var tas = Task.Run(() => blobReference.DownloadTextAsync());
+                var data = tas.Result;
+                var azureSettings = JsonConvert.DeserializeObject<AzureSettings>(data);
+                return azureSettings;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+        }
+
     }
 }

@@ -23,7 +23,7 @@ namespace ChaosExecuter.Crawler
             log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.Now}");
 
             var azureSettings = AzureClient.azureSettings;
-            List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
+            List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure, azureSettings.Chaos.BlackListedResourceGroups);
             var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             foreach (string resourceGroup in resourceGroupList)
             {
