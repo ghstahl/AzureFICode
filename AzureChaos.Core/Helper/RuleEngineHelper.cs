@@ -24,6 +24,44 @@ namespace AzureChaos.Helper
                 schedulerSessionId = sessionId
             };
         }
+        public static ScheduledRulesEntity ConvertToScheduledRuleEntityForAvailabilitySet<T>(T entity, string sessionId, ActionType action, DateTime executionTime, bool domainFlage) where T : VirtualMachineCrawlerResponseEntity
+        {
+            if (!Endpoints.ComputeExecuterEndpoints.ContainsKey(entity.ResourceType))
+            {
+                return null;
+            }
+            var partitonKeyValue = string.Empty;
+            if (domainFlage)
+            {
+                partitonKeyValue = entity.AvailableSetId + "@" + entity.FaultDomain.ToString();
+            }
+            else
+            {
+                partitonKeyValue = entity.AvailableSetId + "@" + entity.UpdateDomain.ToString();
+            }
+            return new ScheduledRulesEntity(partitonKeyValue, entity.RowKey)
+            {
+                executorEndPoint = Endpoints.ComputeExecuterEndpoints[entity.ResourceType],
+                scheduledExecutionTime = executionTime,
+                triggerData = GetTriggerData(entity, action.ToString()),
+                schedulerSessionId = sessionId
+            };
+        }
+        public static ScheduledRulesEntity ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId, ActionType action, DateTime executionTime) where T : VirtualMachineCrawlerResponseEntity
+        {
+            if (!Endpoints.ComputeExecuterEndpoints.ContainsKey(entity.ResourceType))
+            {
+                return null;
+            }
+
+            return new ScheduledRulesEntity(entity.RegionName + "!" + entity.AvailabilityZone, entity.RowKey)
+            {
+                executorEndPoint = Endpoints.ComputeExecuterEndpoints[entity.ResourceType],
+                scheduledExecutionTime = executionTime,
+                triggerData = GetTriggerData(entity, action.ToString()),
+                schedulerSessionId = sessionId
+            };
+        }
 
         public static string GetTriggerData(CrawlerResponseEntity crawlerResponse, ActionType action)
         {

@@ -20,5 +20,7 @@ namespace AzureChaos.Entity
         public string schedulerSessionId { get; set; }
         public bool isRollBack { get; set; }
         public DateTime scheduledExecutionTime { get; set; }
+        public string status { get; set; }
+        public string chaosAction { get; set; }
     }
 }

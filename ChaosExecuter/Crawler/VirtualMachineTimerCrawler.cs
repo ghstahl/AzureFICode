@@ -26,7 +26,7 @@ namespace ChaosExecuter.Crawler
                 var azureSettings = AzureClient.azureSettings;
 
                 // will be listing out only the standalone virtual machines.
-                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
+                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure, AzureClient.azureSettings.Chaos.BlackListedResourceGroups);
                 foreach (string resourceGroup in resourceGroupList)
                 {
                     List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup, log);

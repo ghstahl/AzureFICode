@@ -28,7 +28,7 @@ namespace ChaosExecuter.Schedulers
                 log.Info($"RuleEngine trigger function request parameter is empty.");
                 return req.CreateResponse(HttpStatusCode.BadRequest, "Request is empty");
             }
-
+            var azureSettings = AzureClient.azureSettings;
             log.Info("C# RuleEngine trigger function processed a request.");
             /// Scale Set Rule engine:
             IRuleEngine vmss = new ScaleSetRuleEngine();
@@ -37,11 +37,24 @@ namespace ChaosExecuter.Schedulers
             /// Scale Set Rule engine:
             IRuleEngine vm = new VirtualMachineRuleEngine();
             vm.CreateRule(AzureClient);
+
+            //AvailabilityZone Rule Engine
+            if (azureSettings.Chaos.AvailabilityZoneChaos.Enabled)
+            {
+                IRuleEngine availabilityZone = new AvailabilityZoneRuleEngine();
+                availabilityZone.CreateRule(AzureClient);
+            }
+            if (azureSettings.Chaos.AvailabilitySetChaos.Enabled && (azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled || azureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled))
+            {
+                IRuleEngine availabilityset = new AvailabilitySetRuleEngine();
+                availabilityset.CreateRule(AzureClient);
+
+            }
             //dynamic data = Task.Run(req.Content.ReadAsAsync<InputObject>());
             var tas = Task.Run(() => req.Content.ReadAsAsync<InputObject>());
             var data = tas.Result;
             EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceName);
-            var azureSettings = AzureClient.azureSettings;
+
             try
             {
                 /*TODO Nithin - need to move all these code into individual file which is implements the ruleengine interface*/

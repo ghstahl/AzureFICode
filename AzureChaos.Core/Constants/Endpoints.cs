@@ -15,6 +15,6 @@ namespace AzureChaos.Constants
         ///Zen3 subscription blob endpoint for configs: ==>  https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json
         /// Microsoft demo config file ==> https://stachaosteststorage.blob.core.windows.net/configs/azuresettings.json
 
-        public const string ConfigEndpoint = "https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json";
+        public const string ConfigEndpoint = "https://cmnewschema.blob.core.windows.net/configs/azuresettings.json";
     }
 }

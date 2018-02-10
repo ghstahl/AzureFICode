@@ -42,7 +42,7 @@ namespace AzureChaos.Models
         public List<string> BlackListedResources { get; set; }
 
         [JsonProperty("microsoft.chaos.blackListedResourceGroups")]
-        public string BloackListedResourceGroups { get; set; }
+        public string BlackListedResourceGroups { get; set; }
 
         [JsonProperty("microsoft.chaos.resourceGroups")]
         public string ResourceGroups { get; set; }

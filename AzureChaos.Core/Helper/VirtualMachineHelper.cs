@@ -95,6 +95,44 @@ namespace AzureChaos.Helper
             return tableBatchOperation;
         }
 
+        public static TableBatchOperation CreateScheduleEntityForAvailabilityZone(IList<VirtualMachineCrawlerResponseEntity> filteredVmSet, int schedulerFrequency)
+        {
+            TableBatchOperation tableBatchOperation = new TableBatchOperation();
+            Random random = new Random();
+            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(5, schedulerFrequency - 10));
+            var sessionId = Guid.NewGuid().ToString();
+            foreach (var item in filteredVmSet)
+            {
+                var actionType = GetAction(item.State);
+                if (actionType == ActionType.Unknown)
+                {
+                    continue;
+                }
+
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime));
+            }
+
+            return tableBatchOperation;
+        }
+        public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponseEntity> filteredVmSet, int schedulerFrequency, bool domainFlage)
+        {
+            TableBatchOperation tableBatchOperation = new TableBatchOperation();
+            Random random = new Random();
+            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(5, schedulerFrequency - 10));
+            var sessionId = Guid.NewGuid().ToString();
+            foreach (var item in filteredVmSet)
+            {
+                var actionType = GetAction(item.State);
+                if (actionType == ActionType.Unknown)
+                {
+                    continue;
+                }
+
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime,domainFlage));
+            }
+
+            return tableBatchOperation;
+        }
         /// <summary>Get the action based on the current state of the virtual machine.</summary>
         /// <param name="state">Current state of the virtual machine.</param>
         /// <returns></returns>
