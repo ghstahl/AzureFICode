@@ -43,12 +43,24 @@ namespace AzureChaos.Interfaces
                 var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
                 var scaleSet = GetRandomScaleSet(storageAccountProvider, azureSettings, storageAccount);
                 var filteredVmSet = GetVirtualMachineSet(storageAccountProvider, azureSettings, storageAccount, scaleSet.Id);
-                var batchOperation = VirtualMachineHelper.CreateScheduleEntity(filteredVmSet, azureSettings.Chaos.SchedulerFrequency);
-                if (batchOperation.Count > 0)
+                if (filteredVmSet == null)
                 {
-                    CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduleTableName);
-                    Extensions.Synchronize(() => table.ExecuteBatchAsync(batchOperation));
+                    return;
                 }
+
+                TableBatchOperation batchOperation = null;
+                CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduledRulesTable);
+                var count = VmCount(filteredVmSet.Count, azureSettings);
+
+                do
+                {
+                    filteredVmSet = filteredVmSet.Take(count).ToList();
+                    batchOperation = VirtualMachineHelper.CreateScheduleEntity(filteredVmSet, azureSettings.Chaos.SchedulerFrequency);
+                    if (batchOperation != null || batchOperation.Count > 0)
+                    {
+                        Extensions.Synchronize(() => table.ExecuteBatchAsync(batchOperation));
+                    }
+                } while (filteredVmSet != null && filteredVmSet.Any());
             }
         }
 
@@ -92,14 +104,14 @@ namespace AzureChaos.Interfaces
                 return null;
             }
 
-            var scheduleEntities = ResourceFilterHelper.QueryByMeanTime<ScheduledRulesEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ScheduleTableName);
+            var scheduleEntities = ResourceFilterHelper.QueryByMeanTime<ScheduledRulesEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ScheduledRulesTable);
             var scheduleEntitiesResourceIds = (scheduleEntities == null || !scheduleEntities.Any()) ? new List<string>() : scheduleEntities.Select(x => x.RowKey.Replace("!", "/"));
 
             var activityEntities = ResourceFilterHelper.QueryByMeanTime<EventActivityEntity>(storageAccount, storageAccountProvider, azureSettings, azureSettings.ActivityLogTable);
             var activityEntitiesResourceIds = (activityEntities == null || !activityEntities.Any()) ? new List<string>() : activityEntities.Select(x => x.Id);
 
-            var filteredSet = resultsSet.Where(x => !scheduleEntitiesResourceIds.Contains(x.Id) && !activityEntitiesResourceIds.Contains(x.Id));
-            return filteredSet.Take(VmCount(filteredSet.Count(), azureSettings)).ToList();
+            var result = resultsSet.Where(x => !scheduleEntitiesResourceIds.Contains(x.Id) && !activityEntitiesResourceIds.Contains(x.Id));
+            return result == null ? null : result.ToList();
         }
 
         /// <summary>Get the virtual machine count based on the config percentage.</summary>

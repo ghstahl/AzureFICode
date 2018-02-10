@@ -23,8 +23,8 @@ namespace AzureChaos.Helper
                 ResourceGroupName = virtualMachine.ResourceGroupName,
                 ResourceName = virtualMachine.Name,
                 AvailableSetId = virtualMachine.AvailabilitySetId,
-                UpdateDomain = virtualMachine.InstanceView.PlatformUpdateDomain,
-                FaultDomain = virtualMachine.InstanceView.PlatformFaultDomain,
+                UpdateDomain = virtualMachine.InstanceView == null ? null : virtualMachine.InstanceView.PlatformUpdateDomain,
+                FaultDomain = virtualMachine.InstanceView == null ? null : virtualMachine.InstanceView.PlatformFaultDomain,
                 ResourceType = virtualMachine.Type,
                 Id = virtualMachine.Id,
                 AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
@@ -50,9 +50,6 @@ namespace AzureChaos.Helper
                 RegionName = scaleSetVM.RegionName,
                 ResourceGroupName = resourceGroup,
                 ResourceName = scaleSetVM.Name,
-                AvailableSetId = scaleSetVM.AvailabilitySetId,
-                UpdateDomain = scaleSetVM.InstanceView.PlatformUpdateDomain,
-                FaultDomain = scaleSetVM.InstanceView.PlatformFaultDomain,
                 ResourceType = scaleSetVM.Type,
                 ScaleSetId = scaleSetId,
                 Id = scaleSetVM.Id,
@@ -72,17 +69,27 @@ namespace AzureChaos.Helper
         {
             TableBatchOperation tableBatchOperation = new TableBatchOperation();
             Random random = new Random();
-            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(5, schedulerFrequency - 10));
+            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(1, schedulerFrequency));
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
+                if (item == null)
+                {
+                    continue;
+                }
+
                 var actionType = GetAction(item.State);
                 if (actionType == ActionType.Unknown)
                 {
                     continue;
                 }
 
-                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntity<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime));
+                var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime);
+                if (entityEntry != null)
+                {
+                    tableBatchOperation.InsertOrMerge(entityEntry);
+
+                }
             }
 
             return tableBatchOperation;

@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace ChaosExecuter.Crawler
 {
@@ -19,69 +18,67 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachinescaleset")]
-        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachinescaleset executed at: {DateTime.Now}");
-            try
+
+            var azureSettings = AzureClient.azureSettings;
+            List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
+
+            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
+            foreach (string resourceGroup in resourceGroupList)
             {
-                var azureSettings = AzureClient.azureSettings;
-                TableBatchOperation scaleSetbatchOperation = new TableBatchOperation();
-                TableBatchOperation vmbatchOperation = new TableBatchOperation();
-                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure);
-                foreach (string resourceGroup in resourceGroupList)
+                var scaleSetsList = await AzureClient.azure.VirtualMachineScaleSets.ListByResourceGroupAsync(resourceGroup);
+                var scaleSetVms = new List<IVirtualMachineScaleSetVMs>();
+                VMScaleSetCrawlerResponseEntity vmScaletSetEntity = null;
+                try
                 {
-                    var scaleSetsList = await AzureClient.azure.VirtualMachineScaleSets.ListByResourceGroupAsync(resourceGroup);
-                    var scaleSetVms = new List<IVirtualMachineScaleSetVMs>();
-                    VMScaleSetCrawlerResponseEntity vmScaletSetEntity = null;
-                    try
+                    TableBatchOperation scaleSetbatchOperation = new TableBatchOperation();
+                    foreach (var scaleSet in scaleSetsList)
                     {
-                        foreach (var scaleSet in scaleSetsList)
+                        // insert the scale set details into table
+                        vmScaletSetEntity = new VMScaleSetCrawlerResponseEntity(scaleSet.ResourceGroupName, scaleSet.Name);
+                        vmScaletSetEntity.ResourceName = scaleSet.Name;
+                        vmScaletSetEntity.ResourceType = scaleSet.Type;
+                        vmScaletSetEntity.EntryInsertionTime = DateTime.UtcNow;
+                        vmScaletSetEntity.ResourceGroupName = scaleSet.ResourceGroupName;
+                        vmScaletSetEntity.RegionName = scaleSet.RegionName;
+                        vmScaletSetEntity.Id = scaleSet.Id;
+                        scaleSetbatchOperation.InsertOrReplace(vmScaletSetEntity);
+
+                        var virtualMachines = await scaleSet.VirtualMachines.ListAsync();
+                        var partitionKey = scaleSet.Id.Replace('/', '!');
+                        TableBatchOperation vmbatchOperation = new TableBatchOperation();
+                        foreach (var instance in virtualMachines)
                         {
-                            // insert the scale set details into table
-                            vmScaletSetEntity = new VMScaleSetCrawlerResponseEntity(scaleSet.ResourceGroupName, scaleSet.Name);
-                            vmScaletSetEntity.ResourceName = scaleSet.Name;
-                            vmScaletSetEntity.ResourceType = scaleSet.Type;
-                            vmScaletSetEntity.EntryInsertionTime = DateTime.UtcNow;
-                            vmScaletSetEntity.ResourceGroupName = scaleSet.ResourceGroupName;
-                            vmScaletSetEntity.RegionName = scaleSet.RegionName;
-                            vmScaletSetEntity.Id = scaleSet.Id;
-                            scaleSetbatchOperation.Insert(vmScaletSetEntity);
-                            var virtualMachines = await scaleSet.VirtualMachines.ListAsync();
-                            var partitionKey = scaleSet.Id.Replace('/', '!');
-                            foreach (var instance in virtualMachines)
-                            {
-                                // insert the scale set vm instances to table
-                                vmbatchOperation.Insert(VirtualMachineHelper.ConvertToVirtualMachineEntity(instance, scaleSet.ResourceGroupName, scaleSet.Id, partitionKey, vmScaletSetEntity.AvailabilityZone, VirtualMachineGroup.ScaleSets.ToString()));
-                            }
+                            // insert the scale set vm instances to table
+                            vmbatchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(instance, scaleSet.ResourceGroupName, scaleSet.Id, partitionKey, vmScaletSetEntity.AvailabilityZone, VirtualMachineGroup.ScaleSets.ToString()));
+                        }
+
+                        if (vmbatchOperation.Count > 0)
+                        {
+                            CloudTable vmTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+                            await vmTable.ExecuteBatchAsync(vmbatchOperation);
                         }
                     }
-                    catch (Exception ex)
+
+                    if (scaleSetbatchOperation.Count > 0)
                     {
-                        vmScaletSetEntity = new VMScaleSetCrawlerResponseEntity(azureSettings.Client.ResourceGroup, Guid.NewGuid().ToString())
-                        {
-                            Error = ex.Message
-                        };
-                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", ex, "timercrawlerforvirtualmachinescaleset");
+                        CloudTable scaleSetTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ScaleSetCrawlerTableName);
+                        await scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
                     }
                 }
-
-                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-                if (scaleSetbatchOperation.Count > 0)
+                catch (Exception ex)
                 {
-                    CloudTable scaleSetTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ScaleSetCrawlerTableName);
-                    await scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation);
-                }
-
-                if (vmbatchOperation.Count > 0)
-                {
-                    CloudTable vmTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
-                    await vmTable.ExecuteBatchAsync(vmbatchOperation);
+                    vmScaletSetEntity = new VMScaleSetCrawlerResponseEntity(azureSettings.Client.ResourceGroup, Guid.NewGuid().ToString())
+                    {
+                        Error = ex.Message
+                    };
+                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", ex, "timercrawlerforvirtualmachinescaleset");
                 }
             }
-            catch (Exception ex)
-            {
-                log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", ex, "timercrawlerforvirtualmachinescaleset");
-            }
+
         }
+
     }
 }

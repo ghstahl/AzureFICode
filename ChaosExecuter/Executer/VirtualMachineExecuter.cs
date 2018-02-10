@@ -5,12 +5,10 @@ using AzureChaos.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Executer
@@ -23,61 +21,63 @@ namespace ChaosExecuter.Executer
 
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
         private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
+        private const string FunctionName = "vmexecuter";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
         /// <param name="req">The http request message.</param>
         /// <param name="log">The trace writer.</param>
         /// <returns>Returns the http response message.</returns>
         [FunctionName("vmexecuter")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "vmexecuter")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<bool> Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
-            if (req?.Content == null)
+            var input = context.GetInput<string>();
+            InputObject inputObject;
+            if (!ValidateInput(input, log, out inputObject))
             {
-                log.Info($"VM Chaos trigger function request parameter is empty.");
-                return req.CreateResponse(HttpStatusCode.BadRequest, "Request is empty");
-            }
-
-            log.Info($"VM Chaos trigger function processed a request. RequestUri= { req.RequestUri }");
-            // Get request body
-            dynamic data = await req.Content.ReadAsAsync<InputObject>();
-            if (data == null || !Enum.TryParse(data?.Action.ToString(), out ActionType action) || string.IsNullOrWhiteSpace(data?.ResourceName)
-                || string.IsNullOrWhiteSpace(data?.ResourceGroup))
-            {
-                return req.CreateErrorResponse(HttpStatusCode.BadRequest, "Invalid Action/Resource/ResourceGroup");
+                return false;
             }
 
             var azureSettings = AzureClient.azureSettings;
-            EventActivityEntity eventActivity = new EventActivityEntity(data.ResourceName);
+            EventActivityEntity eventActivity = new EventActivityEntity(inputObject.ResourceName);
             var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             try
             {
-                IVirtualMachine virtualMachine = await GetVirtualMachine(AzureClient.azure, data.ResourceGroup, data.ResourceName);
-                log.Info($"VM Chaos trigger function Processing the action= " + data?.Action);
+                IVirtualMachine virtualMachine = await GetVirtualMachine(AzureClient.azure, inputObject, log);
+                if (virtualMachine == null)
+                {
+                    log.Info($"VM Chaos : No resource found for the resource name : " + inputObject.ResourceName);
+                    return false;
+                }
+
+                log.Info($"VM Chaos received the action: " + inputObject.Action + " for the virtual machine: " + inputObject.ResourceName);
 
                 /// checking the provisiong state before the starting the chaos, if its already in the failed or in-progress state, then we will not be doing any chaos.
                 if (!Enum.TryParse(virtualMachine.ProvisioningState, out ProvisioningState provisioningState) && provisioningState != ProvisioningState.Succeeded)
                 {
+                    log.Info($"VM Chaos :  The vm '" + inputObject.ResourceName + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
-                    eventActivity.Error = "Current VM in the state of " + virtualMachine.ProvisioningState + ". Couldnot perform the Chaos";
+                    eventActivity.Error = "Vm provisioning state and action both are same, so couldnot perform the action";
                     await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                    return req.CreateResponse(HttpStatusCode.PreconditionFailed, "Current VM in the state of " + virtualMachine.ProvisioningState + ". Couldnot perform the Chaos");
+                    return false;
                 }
 
-                SetInitialEventActivity(virtualMachine, data, eventActivity);
-                // if its not valid chaos then update the event table with  warning message and return the bad request response
-                bool isValidChaos = IsValidChaos(data.Action, virtualMachine.PowerState);
+                SetInitialEventActivity(virtualMachine, inputObject, eventActivity);
+
+                // if its not valid chaos then update the event table with  warning message and return false
+                bool isValidChaos = IsValidChaos(inputObject.Action, virtualMachine.PowerState);
                 if (!isValidChaos)
                 {
+                    log.Info($"VM Chaos- Invalid action: " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
-                    eventActivity.Warning = WarningMessageOnSameState;
+                    eventActivity.Warning = "Invalid Action";
                     await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                    return req.CreateResponse(HttpStatusCode.BadRequest);
+                    return false;
                 }
 
                 eventActivity.Status = Status.Started.ToString();
                 await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                await PerformChaos(data.Action, virtualMachine, eventActivity);
-                virtualMachine = await GetVirtualMachine(AzureClient.azure, data.ResourceGroup, data.ResourceName); // virtualMachine.RefreshAsync();
+                await PerformChaos(inputObject.Action, virtualMachine, eventActivity);
+                virtualMachine = await GetVirtualMachine(AzureClient.azure, inputObject, log);
                 if (virtualMachine != null)
                 {
                     eventActivity.EventCompletedDate = DateTime.UtcNow;
@@ -85,16 +85,61 @@ namespace ChaosExecuter.Executer
                 }
 
                 await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                return req.CreateResponse(HttpStatusCode.OK);
+                log.Info($"VM Chaos Completed");
+                return true;
             }
             catch (Exception ex)
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
                 await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                log.Error($"VM Chaos trigger function Throw the exception ", ex, "VMChaos");
-                return req.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+
+                // dont throw the error here just handle the error and return the false
+                log.Error($"VM Chaos trigger function threw the exception ", ex, FunctionName);
+                log.Info($"VM Chaos Completed with error");
             }
+
+            return false;
+        }
+
+        /// <summary>Validate the request input on this functions, and log the invalid.</summary>
+        /// <param name="input"></param>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        private static bool ValidateInput(string input, TraceWriter log, out InputObject inputObject)
+        {
+            try
+            {
+                inputObject = JsonConvert.DeserializeObject<InputObject>(input);
+                if (inputObject == null)
+                {
+                    log.Error("input data is empty");
+                    return false;
+                }
+                if (!Enum.TryParse(inputObject.Action.ToString(), out ActionType action))
+                {
+                    log.Error("Virtual Machine action is not valid action");
+                    return false;
+                }
+                if (string.IsNullOrWhiteSpace(inputObject.ResourceName))
+                {
+                    log.Error("Virtual Machine Resource name is not valid name");
+                    return false;
+                }
+                if (string.IsNullOrWhiteSpace(inputObject.ResourceGroup))
+                {
+                    log.Error("Virtual Machine Resource Group is not valid resource group");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error("Threw exception on the validate input method", ex, FunctionName + ": ValidateInput");
+                inputObject = null;
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>Perform the Chaos Operation</summary>
@@ -104,23 +149,31 @@ namespace ChaosExecuter.Executer
         /// <returns></returns>
         private static async Task PerformChaos(ActionType actionType, IVirtualMachine virtualMachine, EventActivityEntity eventActivity)
         {
-            switch (actionType)
+            try
             {
-                case ActionType.Start:
-                    await virtualMachine.StartAsync();
-                    break;
+                switch (actionType)
+                {
+                    case ActionType.Start:
+                        await virtualMachine.StartAsync();
+                        break;
 
-                case ActionType.PowerOff:
-                case ActionType.Stop:
-                    await virtualMachine.PowerOffAsync();
-                    break;
+                    case ActionType.PowerOff:
+                    case ActionType.Stop:
+                        await virtualMachine.PowerOffAsync();
+                        break;
 
-                case ActionType.Restart:
-                    await virtualMachine.RestartAsync();
-                    break;
+                    case ActionType.Restart:
+                        await virtualMachine.RestartAsync();
+                        break;
+                }
+
+                eventActivity.Status = Status.Completed.ToString();
             }
-
-            eventActivity.Status = Status.Completed.ToString();
+            catch (Exception ex)
+            {
+                // throw the exception and handle it parent method.
+                throw ex;
+            }
         }
 
         /// <summary>Check the given action is valid chaos to perform on the vm</summary>
@@ -147,7 +200,7 @@ namespace ChaosExecuter.Executer
         /// <param name="virtualMachine">The vm</param>
         /// <param name="data">Request</param>
         /// <param name="eventActivity">Event activity entity.</param>
-        private static void SetInitialEventActivity(IVirtualMachine virtualMachine, dynamic data, EventActivityEntity eventActivity)
+        private static void SetInitialEventActivity(IVirtualMachine virtualMachine, InputObject data, EventActivityEntity eventActivity)
         {
             eventActivity.InitialState = virtualMachine.PowerState.Value;
             eventActivity.Resource = data.ResourceName;
@@ -163,15 +216,16 @@ namespace ChaosExecuter.Executer
         /// <param name="resourceGroup">The Resource Group.</param>
         /// <param name="resourceName">The Resource Name</param>
         /// <returns>Returns the virtual machine.</returns>
-        private static async Task<IVirtualMachine> GetVirtualMachine(IAzure azure, string resourceGroup, string resourceName)
+        private static async Task<IVirtualMachine> GetVirtualMachine(IAzure azure, InputObject inputObject, TraceWriter log)
         {
-            var virtualMachines = await azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup);
+            var virtualMachines = await azure.VirtualMachines.ListByResourceGroupAsync(inputObject.ResourceGroup);
             if (virtualMachines == null || !virtualMachines.Any())
             {
+                log.Info("No virtual machines are found in the resource group: " + inputObject.ResourceGroup);
                 return null;
             }
 
-            return virtualMachines.FirstOrDefault(x => x.Name.Equals(resourceName, StringComparison.InvariantCultureIgnoreCase));
+            return virtualMachines.FirstOrDefault(x => x.Name.Equals(inputObject.ResourceName, StringComparison.InvariantCultureIgnoreCase));
         }
     }
 }

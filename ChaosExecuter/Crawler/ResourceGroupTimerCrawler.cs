@@ -14,7 +14,7 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerresourcegroups")]
-        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.Now}");
             TableBatchOperation batchOperation = new TableBatchOperation();

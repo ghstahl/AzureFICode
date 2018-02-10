@@ -18,7 +18,7 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachines")]
-        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.Now}");
             try
@@ -39,6 +39,10 @@ namespace ChaosExecuter.Crawler
                     var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
                     var virtualMachines = pagedCollection.Select(x => x).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId) &&
                     !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
+                    if(virtualMachines == null || !virtualMachines.Any())
+                    {
+                        return;
+                    }
 
                     /// Unique key of the table entry will be calculated based on the resourcegroup(as partitionkey) and resource name(as row key).
                     /// So here grouping is needed, since vm groups can be different, table batch operation will not be allowing the different partition keys(i.e. group name can be different) in one batch operation

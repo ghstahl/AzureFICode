@@ -1,5 +1,4 @@
-﻿using AzureChaos.ReguestHelpers;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace AzureChaos.Models
 {
@@ -27,19 +26,10 @@ namespace AzureChaos.Models
         [JsonProperty("microsoft.chaos.client.table.availabilityZoneCrawler")]
         public string AvailabilityZoneCrawlerTableName { get; set; }
 
-        [JsonProperty("microsoft.chaos.client.table.scheduleTable")]
-        public string ScheduleTableName { get; set; }
-
         [JsonProperty("microsoft.chaos.client.table.activityLog")]
         public string ActivityLogTable { get; set; }
 
         [JsonProperty("microsoft.chaos.client.table.scheduledRules")]
         public string ScheduledRulesTable { get; set; }
-
-        [JsonProperty("storageaccountname")]
-        public string StorageAccountName { get; set; }
-
-        [JsonProperty("microsoft.chaos.AS.faultDomain.enabled")]
-        public bool EnableAvailabilitySet { get; set; }
     }
 }

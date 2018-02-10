@@ -15,7 +15,7 @@ namespace AzureChaos.Models
         public string ResourceGroup { get; set; }
 
         /// <summary>Get or sets  the resource group.</summary>
-        public string ScaleSetName { get; set; }
+        public string ScalesetId { get; set; }
 
         /// <summary>AvailibilitySet Name to be passed</summary>
         public string AvailibilitySet { get; set; }
