@@ -2,13 +2,13 @@
 using AzureChaos.Helper;
 using AzureChaos.Models;
 using AzureChaos.Providers;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using AzureChaos.Enums;
 
@@ -17,24 +17,43 @@ namespace AzureChaos.Interfaces
     public class AvailabilityZoneRuleEngine : IRuleEngine
     {
         private AzureSettings azureSettings;
-        //private CloudTable virtualMachineTable;
-        //private IStorageAccountProvider storageProvider;
 
-        public void CreateRule(AzureClient azureClient)
+        public void CreateRule(AzureClient azureClient, TraceWriter log)
         {
-            azureSettings = azureClient.azureSettings;
-            Random random = new Random();
-            IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
-            var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
-            var possibleAvailabilityZoneRegionCombinations = GetAllPossibleAvailabilityZoneRegionCombination(storageAccountProvider, storageAccount);
-            var recentlyExecutedAvailabilityZoneRegionCombination = GetRecentlyExecutedAvailabilityZoneRegionCombination(storageAccountProvider, storageAccount);
-            var avilabilityZoneRegionCombinations = possibleAvailabilityZoneRegionCombinations.Except(recentlyExecutedAvailabilityZoneRegionCombination).ToList();
-            var randomAvailabilityZoneRegion = avilabilityZoneRegionCombinations[random.Next(0, avilabilityZoneRegionCombinations.Count - 1)];
-            var componentsInRandomAvailabilityZoneRegion = randomAvailabilityZoneRegion.Split('!');
-            var availabilityZone = int.Parse(componentsInRandomAvailabilityZoneRegion.Last());
-            var region = componentsInRandomAvailabilityZoneRegion.First();
-            InsertVirtualMachineAvailabilityZoneRegionResults(storageAccountProvider, storageAccount, region, availabilityZone);
+            log.Info("AvailabilityZone RuleEngine: Started the creating rules for the scale set.");
+            try
+            {
+                azureSettings = azureClient.azureSettings;
+                IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
+                var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
+                var possibleAvailabilityZoneRegionCombinations = GetAllPossibleAvailabilityZoneRegionCombination(storageAccountProvider, storageAccount);
+                if (possibleAvailabilityZoneRegionCombinations == null)
+                {
+                    log.Info("AvailabilityZone RuleEngine: Not found any possible Avilability zones");
+                    return;
+                }
 
+                var recentlyExecutedAvailabilityZoneRegionCombination = GetRecentlyExecutedAvailabilityZoneRegionCombination(storageAccountProvider, storageAccount);
+                var avilabilityZoneRegionCombinations = possibleAvailabilityZoneRegionCombinations.Except(recentlyExecutedAvailabilityZoneRegionCombination);
+                if (avilabilityZoneRegionCombinations == null)
+                {
+                    log.Info("AvailabilityZone RuleEngine: Not found any Avilability zones after excluding the recent availabity zone");
+                    return;
+                }
+
+                var avilabilityZoneRegionCombinationsList = avilabilityZoneRegionCombinations.ToList();
+                Random random = new Random();
+                var randomAvailabilityZoneRegion = avilabilityZoneRegionCombinationsList[random.Next(0, avilabilityZoneRegionCombinationsList.Count - 1)];
+                var componentsInRandomAvailabilityZoneRegion = randomAvailabilityZoneRegion.Split('!');
+                var availabilityZone = int.Parse(componentsInRandomAvailabilityZoneRegion.Last());
+                var region = componentsInRandomAvailabilityZoneRegion.First();
+                InsertVirtualMachineAvailabilityZoneRegionResults(storageAccountProvider, storageAccount, region, availabilityZone);
+            }
+            catch (Exception ex)
+            {
+                log.Error("AvailabilityZone RuleEngine: thrown exception", ex);
+                return;
+            }
         }
 
         private void InsertVirtualMachineAvailabilityZoneRegionResults(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount, string region, int availbilityZone)
@@ -109,11 +128,6 @@ namespace AzureChaos.Interfaces
             return new List<string>(possibleAvailabilityZoneRegionCombinationVMCount.Keys);
         }
         public Task CreateRuleAsync(AzureClient azureClient)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool IsChaosEnabled(AzureSettings azureSettings)
         {
             throw new NotImplementedException();
         }

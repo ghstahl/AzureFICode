@@ -14,6 +14,9 @@ namespace AzureChaos.Models
         [JsonProperty("microsoft.chaos.scheduler.frequency")]
         public int SchedulerFrequency { get; set; }
 
+        [JsonProperty("microsoft.chaos.trigger.frequency")]
+        public int TriggerFrequency { get; set; }
+
         [JsonProperty("microsoft.chaos.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 

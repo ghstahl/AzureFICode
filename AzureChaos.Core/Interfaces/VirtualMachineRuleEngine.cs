@@ -4,8 +4,10 @@ using AzureChaos.Helper;
 using AzureChaos.Models;
 using AzureChaos.Providers;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,51 +18,44 @@ namespace AzureChaos.Interfaces
     /// <summary>Virtual machine rule engine will create the rules for the virtual machine based on the config settings and existing schedule/event tables.</summary>
     public class VirtualMachineRuleEngine : IRuleEngine
     {
-        /// <summary>Check whether chaos enabled for the virtual machine and over all</summary>
-        /// <param name="azureSettings">config values </param>
-        /// <returns></returns>
-        public bool IsChaosEnabled(AzureSettings azureSettings)
-        {
-            if (azureSettings?.Chaos == null || !azureSettings.Chaos.ChaosEnabled ||
-              azureSettings.Chaos.VirtualMachineChaos == null || !azureSettings.Chaos.VirtualMachineChaos.Enabled)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         /// <summary>Create the virtual machine rules</summary>
         /// <param name="azureClient"></param>
-        public void CreateRule(AzureClient azureClient)
+        public void CreateRule(AzureClient azureClient, TraceWriter log)
         {
-            var azureSettings = azureClient.azureSettings;
-            if (!IsChaosEnabled(azureSettings))
+            try
             {
-                return;
-            }
-
-            IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
-            var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
-            var vmSets = GetRandomVmSet(storageAccountProvider, azureSettings, storageAccount);
-            if (vmSets == null)
-            {
-                return;
-            }
-
-            TableBatchOperation batchOperation = null;
-            CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduledRulesTable);
-            var count = VmCount(vmSets.Count, azureSettings);
-            do
-            {
-                vmSets = vmSets.Take(count).ToList();
-                batchOperation = VirtualMachineHelper.CreateScheduleEntity(vmSets, azureSettings.Chaos.SchedulerFrequency);
-                if (batchOperation != null || batchOperation.Count > 0)
+                log.Info("VirtualMachine RuleEngine: Started the creating rules for the virtual machines.");
+                var azureSettings = azureClient.azureSettings;
+                IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
+                var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
+                var vmSets = GetRandomVmSet(storageAccountProvider, azureSettings, storageAccount);
+                if (vmSets == null)
                 {
-                    Extensions.Synchronize(() => table.ExecuteBatchAsync(batchOperation));
+                    log.Info("VirtualMachine RuleEngine: No virtual machines found..");
+                    return;
                 }
-            } while (vmSets != null && vmSets.Any());
 
+                TableBatchOperation batchOperation = null;
+                CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduledRulesTable);
+                var count = VmCount(vmSets.Count, azureSettings);
+                do
+                {
+                    var randomSets = vmSets.Take(count).ToList();
+                    vmSets = vmSets.Except(randomSets).ToList();
+                    batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets, azureSettings.Chaos.SchedulerFrequency, VirtualMachineGroup.VirtualMachines);
+                    if (batchOperation != null || batchOperation.Count > 0)
+                    {
+                        Extensions.Synchronize(() => table.ExecuteBatchAsync(batchOperation));
+                    }
+                } while (vmSets != null && vmSets.Any());
+
+                log.Info("VirtualMachine RuleEngine: Completed creating rule engine..");
+            }
+            catch (Exception ex)
+            {
+                log.Error("VirtualMachine RuleEngine: Exception thrown. ", ex);
+                return;
+            }
         }
 
         /// <summary>Get the list of virtual machines, based on the preconditioncheck on the schedule table and activity table.

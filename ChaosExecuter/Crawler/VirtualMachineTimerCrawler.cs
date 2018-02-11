@@ -18,19 +18,25 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerforvirtualmachines")]
-        public static async void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
-            log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.Now}");
+            log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
             try
             {
                 var azureSettings = AzureClient.azureSettings;
 
                 // will be listing out only the standalone virtual machines.
-                List<string> resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure, AzureClient.azureSettings.Chaos.BlackListedResourceGroups);
-                foreach (string resourceGroup in resourceGroupList)
+                var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure, azureSettings);
+                if (resourceGroupList == null)
                 {
-                    List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup, log);
-                    var pagedCollection = await AzureClient.azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup);
+                    log.Info($"timercrawlerforvirtualmachines: no resource groups to crawl");
+                    return;
+                }
+
+                foreach (var resourceGroup in resourceGroupList)
+                {
+                    List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
+                    var pagedCollection = await AzureClient.azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
                     if (pagedCollection == null || !pagedCollection.Any())
                     {
                         continue;

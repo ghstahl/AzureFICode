@@ -18,7 +18,7 @@ namespace AzureChaos.Helper
         {
             VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity(partitionKey, virtualMachine.Id.Replace("/", "!"))
             {
-                EntryInsertionTime = DateTime.Now,
+                EntryInsertionTime = DateTime.UtcNow,
                 RegionName = virtualMachine.RegionName,
                 ResourceGroupName = virtualMachine.ResourceGroupName,
                 ResourceName = virtualMachine.Name,
@@ -46,7 +46,7 @@ namespace AzureChaos.Helper
         {
             VirtualMachineCrawlerResponseEntity virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponseEntity(partitionKey, scaleSetVM.Id.Replace("/", "!"))
             {
-                EntryInsertionTime = DateTime.Now,
+                EntryInsertionTime = DateTime.UtcNow,
                 RegionName = scaleSetVM.RegionName,
                 ResourceGroupName = resourceGroup,
                 ResourceName = scaleSetVM.Name,
@@ -65,7 +65,7 @@ namespace AzureChaos.Helper
         /// <param name="filteredVmSet">Set of virtual machines.</param>
         /// <param name="schedulerFrequency">Schedule frequency, it will be reading from the config</param>
         /// <returns></returns>
-        public static TableBatchOperation CreateScheduleEntity(IList<VirtualMachineCrawlerResponseEntity> filteredVmSet, int schedulerFrequency)
+        public static TableBatchOperation CreateScheduleEntity(IList<VirtualMachineCrawlerResponseEntity> filteredVmSet, int schedulerFrequency, VirtualMachineGroup virtualMachineGroup)
         {
             TableBatchOperation tableBatchOperation = new TableBatchOperation();
             Random random = new Random();
@@ -84,11 +84,10 @@ namespace AzureChaos.Helper
                     continue;
                 }
 
-                var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime);
+                var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity<VirtualMachineCrawlerResponseEntity>(item, sessionId, actionType, randomExecutionDateTime, virtualMachineGroup);
                 if (entityEntry != null)
                 {
                     tableBatchOperation.InsertOrMerge(entityEntry);
-
                 }
             }
 
@@ -99,7 +98,7 @@ namespace AzureChaos.Helper
         {
             TableBatchOperation tableBatchOperation = new TableBatchOperation();
             Random random = new Random();
-            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(5, schedulerFrequency - 10));
+            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(1, schedulerFrequency));
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
@@ -118,7 +117,7 @@ namespace AzureChaos.Helper
         {
             TableBatchOperation tableBatchOperation = new TableBatchOperation();
             Random random = new Random();
-            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(5, schedulerFrequency - 10));
+            DateTime randomExecutionDateTime = DateTime.UtcNow.AddMinutes(random.Next(1, schedulerFrequency));
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {

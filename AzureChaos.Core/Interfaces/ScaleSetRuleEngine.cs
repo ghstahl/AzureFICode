@@ -1,8 +1,10 @@
 ﻿using AzureChaos.Entity;
+using AzureChaos.Enums;
 using AzureChaos.Helper;
 using AzureChaos.Models;
 using AzureChaos.Providers;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
@@ -18,33 +20,27 @@ namespace AzureChaos.Interfaces
     {
         private AzureSettings azureSettings;
 
-        /// <summary>Check whether chaos enabled for the virtual machine scale set and over all</summary>
-        /// <param name="azureSettings">config values </param>
-        /// <returns></returns>
-        public bool IsChaosEnabled(AzureSettings azureSettings)
-        {
-            if (azureSettings?.Chaos == null || !azureSettings.Chaos.ChaosEnabled ||
-                azureSettings.Chaos.AvailabilitySetChaos == null || !azureSettings.Chaos.AvailabilitySetChaos.Enabled)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         /// <summary>Create the rule for the virtual machine scale vms </summary>
         /// <param name="azureClient"></param>
-        public void CreateRule(AzureClient azureClient)
+        public void CreateRule(AzureClient azureClient, TraceWriter log)
         {
+            log.Info("Scaleset RuleEngine: Started the creating rules for the scale set.");
             azureSettings = azureClient.azureSettings;
-            if (IsChaosEnabled(azureSettings))
+            try
             {
                 IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
                 var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
                 var scaleSet = GetRandomScaleSet(storageAccountProvider, azureSettings, storageAccount);
+                if (scaleSet == null)
+                {
+                    log.Info("Scaleset RuleEngine: No scale set found with virtual machines.");
+                    return;
+                }
+
                 var filteredVmSet = GetVirtualMachineSet(storageAccountProvider, azureSettings, storageAccount, scaleSet.Id);
                 if (filteredVmSet == null)
                 {
+                    log.Info("Scaleset RuleEngine: No virtual machines found for the scale set name: " + scaleSet.ResourceName);
                     return;
                 }
 
@@ -54,13 +50,21 @@ namespace AzureChaos.Interfaces
 
                 do
                 {
-                    filteredVmSet = filteredVmSet.Take(count).ToList();
-                    batchOperation = VirtualMachineHelper.CreateScheduleEntity(filteredVmSet, azureSettings.Chaos.SchedulerFrequency);
+                    var randomSets = filteredVmSet.Take(count).ToList();
+                    filteredVmSet = filteredVmSet.Except(randomSets).ToList();
+                    batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets, azureSettings.Chaos.SchedulerFrequency, VirtualMachineGroup.ScaleSets);
                     if (batchOperation != null || batchOperation.Count > 0)
                     {
                         Extensions.Synchronize(() => table.ExecuteBatchAsync(batchOperation));
                     }
                 } while (filteredVmSet != null && filteredVmSet.Any());
+
+                log.Info("Scaleset RuleEngine: Completed creating rule engine.");
+            }
+            catch(Exception ex)
+            {
+                log.Error("Scaleset RuleEngine: Exception thrown. ", ex);
+                return;
             }
         }
 
@@ -72,8 +76,9 @@ namespace AzureChaos.Interfaces
         private VMScaleSetCrawlerResponseEntity GetRandomScaleSet(IStorageAccountProvider storageAccountProvider, AzureSettings azureSettings, CloudStorageAccount storageAccount)
         {
             TableQuery<VMScaleSetCrawlerResponseEntity> vmScaleSetsQuery = new TableQuery<VMScaleSetCrawlerResponseEntity>();
+            var filter = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
             var resultsSet = ResourceFilterHelper.QueryByMeanTime<VMScaleSetCrawlerResponseEntity>(storageAccount, storageAccountProvider, azureSettings,
-               azureSettings.ScaleSetCrawlerTableName);
+               azureSettings.ScaleSetCrawlerTableName, filter);
             if (resultsSet == null || !resultsSet.Any())
             {
                 return null;

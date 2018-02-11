@@ -12,6 +12,7 @@
             this.RowKey = rowKey;
         }
 
+        public bool HasVirtualMachines { get; set; }
         public int? AvailabilityZone { get; set; }
     }
 }

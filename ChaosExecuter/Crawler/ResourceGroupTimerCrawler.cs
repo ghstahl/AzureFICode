@@ -14,9 +14,9 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         [FunctionName("timercrawlerresourcegroups")]
-        public static async void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
-            log.Info($"timercrawlerresourcegroups executed at: {DateTime.Now}");
+            log.Info($"timercrawlerresourcegroups executed at: {DateTime.UtcNow}");
             TableBatchOperation batchOperation = new TableBatchOperation();
             var azureSettings = AzureClient.azureSettings;
             try
@@ -27,7 +27,7 @@ namespace ChaosExecuter.Crawler
                     ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("crawlrg", resourceGroup.Id.Replace("/", "-"));
                     try
                     {
-                        resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.Now;
+                        resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.UtcNow;
                         resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
                         resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
                         resourceGroupCrawlerResponseEntity.ResourceGroupName = resourceGroup.Name;
