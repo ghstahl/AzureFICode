@@ -92,12 +92,12 @@ namespace ChaosExecuter.Crawler
                         availabilitySetsCrawlerResponseEntity.Error = ex.Message;
                         log.Error($"timercrawlerforavailabilitysets threw the exception ", ex, "timercrawlerforavailabilitysets");
                     }
+                }
 
-                    if (availabilitySetBatchOperation.Count > 0)
-                    {
-                        CloudTable availabilitySetTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
-                        await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
-                    }
+                if (availabilitySetBatchOperation.Count > 0)
+                {
+                    CloudTable availabilitySetTable = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
+                    await availabilitySetTable.ExecuteBatchAsync(availabilitySetBatchOperation);
                 }
             }
         }
