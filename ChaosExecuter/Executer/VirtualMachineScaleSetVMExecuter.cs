@@ -1,75 +1,74 @@
-using AzureChaos.Entity;
-using AzureChaos.Enums;
-using AzureChaos.Models;
-using AzureChaos.Providers;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using AzureChaos.Core.Entity;
+using AzureChaos.Core.Enums;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ChaosExecuter.Executer
 {
-    public static class VirtualMachineScaleSetVMExecuter
+    public static class VirtualMachineScaleSetVmExecuter
     {
         /// <summary>Azure Configuration.</summary>
         private static readonly AzureClient AzureClient = new AzureClient();
 
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-        private const string WarningMessageOnSameState = "Couldnot perform any chaos, since action type and initial state are same";
         private const string FunctionName = "scalesetvmexecuter";
 
         [FunctionName("scalesetvmexecuter")]
         public static async Task<bool> Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
             var input = context.GetInput<string>();
-            InputObject inputObject;
-            if (!ValidateInput(input, log, out inputObject))
+            if (!ValidateInput(input, log, out var inputObject))
             {
                 return false;
             }
 
-            var azureSettings = AzureClient.azureSettings;
-            EventActivityEntity eventActivity = new EventActivityEntity(inputObject.ResourceGroup);
+            var azureSettings = AzureClient.AzureSettings;
+            EventActivity eventActivity = new EventActivity(inputObject.ResourceGroup);
             var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             try
             {
-                IVirtualMachineScaleSetVM scaleSetVM = await GetVirtualMachineScaleSetVm(AzureClient.azure, inputObject, log);
-                if(scaleSetVM == null)
+                var scaleSetVm = await GetVirtualMachineScaleSetVm(AzureClient.AzureInstance, inputObject, log);
+                if (scaleSetVm == null)
                 {
                     log.Info($"VM Scaleset Chaos : No resource found for the  scale set id: " + inputObject.ScalesetId);
                     return false;
                 }
-                
-                log.Info($"VM ScaleSet Chaos received the action: " + inputObject.Action + " for the virtual machine: " + inputObject.ResourceName);
 
-                SetInitialEventActivity(scaleSetVM, inputObject, eventActivity);
+                log.Info($"VM ScaleSet Chaos received the action: " + inputObject.Action +
+                         " for the virtual machine: " + inputObject.ResourceName);
+
+                SetInitialEventActivity(scaleSetVm, inputObject, eventActivity);
 
                 // if its not valid chaos then update the event table with  warning message and return the bad request response
-                bool isValidChaos = IsValidChaos(inputObject.Action, scaleSetVM.PowerState);
+                bool isValidChaos = IsValidChaos(inputObject.Action, scaleSetVm.PowerState);
                 if (!isValidChaos)
                 {
                     log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = "Invalid Action";
-                    await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                    await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
                     return false;
                 }
 
                 eventActivity.Status = Status.Started.ToString();
-                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
-                await PerformChaos(inputObject.Action, scaleSetVM, eventActivity);
-                scaleSetVM = await scaleSetVM.RefreshAsync();
-                if (scaleSetVM != null)
+                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                await PerformChaos(inputObject.Action, scaleSetVm, eventActivity);
+                scaleSetVm = await scaleSetVm.RefreshAsync();
+                if (scaleSetVm != null)
                 {
                     eventActivity.EventCompletedDate = DateTime.UtcNow;
-                    eventActivity.FinalState = scaleSetVM.PowerState.Value;
+                    eventActivity.FinalState = scaleSetVm.PowerState.Value;
                 }
 
-                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
                 log.Info($"VM ScaleSet Chaos Completed");
                 return true;
             }
@@ -77,7 +76,7 @@ namespace ChaosExecuter.Executer
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
-                await StorageProvider.InsertOrMergeAsync<EventActivityEntity>(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM ScaleSet Chaos trigger function threw the exception ", ex, FunctionName);
@@ -90,6 +89,7 @@ namespace ChaosExecuter.Executer
         /// <summary>Validate the request input on this functions, and log the invalid.</summary>
         /// <param name="input"></param>
         /// <param name="log"></param>
+        /// <param name="inputObject"></param>
         /// <returns></returns>
         private static bool ValidateInput(string input, TraceWriter log, out InputObject inputObject)
         {
@@ -101,7 +101,7 @@ namespace ChaosExecuter.Executer
                     log.Error("input data is empty");
                     return false;
                 }
-                if (!Enum.TryParse(inputObject.Action.ToString(), out ActionType action))
+                if (!Enum.TryParse(inputObject.Action.ToString(), out ActionType _))
                 {
                     log.Error("Virtual Machine action is not valid action");
                     return false;
@@ -116,7 +116,7 @@ namespace ChaosExecuter.Executer
                     log.Error("Virtual Machine Resource Group is not valid resource group");
                     return false;
                 }
-                if(string.IsNullOrWhiteSpace(inputObject.ScalesetId))
+                if (string.IsNullOrWhiteSpace(inputObject.ScalesetId))
                 {
                     log.Error("VMScaleset Id is not valid ");
                     return false;
@@ -138,58 +138,50 @@ namespace ChaosExecuter.Executer
         /// <returns></returns>
         private static bool IsValidChaos(ActionType currentAction, PowerState state)
         {
-            if (currentAction == ActionType.Start)
+            switch (currentAction)
             {
-                return state != PowerState.Running && state != PowerState.Starting;
-            }
-            else if (currentAction == ActionType.Stop || currentAction == ActionType.PowerOff || currentAction == ActionType.Restart)
-            {
-                return state != PowerState.Stopping && state != PowerState.Stopped;
-            }
-            else
-            {
-                return false;
+                case ActionType.Start:
+                    return state != PowerState.Running && state != PowerState.Starting;
+                case ActionType.Stop:
+                case ActionType.PowerOff:
+                case ActionType.Restart:
+                    return state != PowerState.Stopping && state != PowerState.Stopped;
+                default:
+                    return false;
             }
         }
 
         /// <summary>Perform the Chaos Operation</summary>
         /// <param name="actionType">Action type</param>
-        /// <param name="virtualMachine">Virtual Machine</param>
+        /// <param name="scaleSetVm">Virtual Machine instance</param>
         /// <param name="eventActivity">Event activity entity</param>
         /// <returns></returns>
-        private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivityEntity eventActivity)
+        private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, EventActivity eventActivity)
         {
-            try
+            switch (actionType)
             {
-                switch (actionType)
-                {
-                    case ActionType.Start:
-                        await scaleSetVm.StartAsync();
-                        break;
+                case ActionType.Start:
+                    await scaleSetVm.StartAsync();
+                    break;
 
-                    case ActionType.PowerOff:
-                    case ActionType.Stop:
-                        await scaleSetVm.PowerOffAsync();
-                        break;
+                case ActionType.PowerOff:
+                case ActionType.Stop:
+                    await scaleSetVm.PowerOffAsync();
+                    break;
 
-                    case ActionType.Restart:
-                        await scaleSetVm.RestartAsync();
-                        break;
-                }
-
-                eventActivity.Status = Status.Completed.ToString();
+                case ActionType.Restart:
+                    await scaleSetVm.RestartAsync();
+                    break;
             }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
+
+            eventActivity.Status = Status.Completed.ToString();
         }
 
         /// <summary>Set the initial property of the activity entity</summary>
         /// <param name="scaleSetVm">The vm</param>
         /// <param name="data">Request</param>
         /// <param name="eventActivity">Event activity entity.</param>
-        private static void SetInitialEventActivity(IVirtualMachineScaleSetVM scaleSetVm, dynamic data, EventActivityEntity eventActivity)
+        private static void SetInitialEventActivity(IVirtualMachineScaleSetVM scaleSetVm, dynamic data, EventActivity eventActivity)
         {
             eventActivity.InitialState = scaleSetVm.PowerState.Value;
             eventActivity.Resource = data.ResourceName;
@@ -201,9 +193,9 @@ namespace ChaosExecuter.Executer
         }
 
         /// <summary>Get the virtual machine.</summary>
-        /// <param name="config">The config</param>
-        /// <param name="resourceGroup">The Resource Group.</param>
-        /// <param name="resourceName">The Resource Name</param>
+        /// <param name="azure">The azure client instance</param>
+        /// <param name="inputObject">The input request.</param>
+        /// <param name="log">The trace writer instance</param>
         /// <returns>Returns the virtual machine.</returns>
         private static async Task<IVirtualMachineScaleSetVM> GetVirtualMachineScaleSetVm(IAzure azure, InputObject inputObject, TraceWriter log)
         {
@@ -215,13 +207,15 @@ namespace ChaosExecuter.Executer
             }
 
             var scaleSetVms = await vmScaleSet.VirtualMachines.ListAsync();
-            if (scaleSetVms == null || !scaleSetVms.Any())
+            if (scaleSetVms != null && scaleSetVms.Any())
             {
-                log.Info("VM Scaleset Chaos: scale set vm's are empty");
-                return null;
+                return scaleSetVms.FirstOrDefault(x =>
+                    x.Name.Equals(inputObject.ResourceName, StringComparison.OrdinalIgnoreCase));
             }
 
-            return scaleSetVms.FirstOrDefault(x => x.Name.Equals(inputObject.ResourceName, StringComparison.OrdinalIgnoreCase));
+            log.Info("VM Scaleset Chaos: scale set vm's are empty");
+            return null;
+
         }
     }
 }

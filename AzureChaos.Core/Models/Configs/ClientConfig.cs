@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace AzureChaos.Models
+namespace AzureChaos.Core.Models.Configs
 {
     public class ClientConfig
     {

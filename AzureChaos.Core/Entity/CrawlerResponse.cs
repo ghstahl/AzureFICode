@@ -1,29 +1,23 @@
-﻿using AzureChaos.Enums;
+﻿using AzureChaos.Core.Enums;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace AzureChaos.Entity
+namespace AzureChaos.Core.Entity
 {
-    public class CrawlerResponseEntity : TableEntity
+    public class CrawlerResponse : TableEntity
     {
         /// <summary>The Region Name</summary>
         public string RegionName { get; set; }
 
-        [Required]
-        /// <summary>Resource Group name </summary>
-        public string ResourceGroupName { get; set; }
+        [Required] public string ResourceGroupName { get; set; }
 
-        [Required]
-        /// <summary>DateTime whenRecord Entered into the Table</summary>
-        public DateTime EntryInsertionTime { get; set; }
+        [Required] public DateTime EntryInsertionTime { get; set; }
 
         /// <summary>Resource Id </summary>
         public string Id { get; set; }
 
-        [Required]
-        /// <summary>Resource Type name</summary>
-        public string ResourceType { get; set; }
+        [Required] public string ResourceType { get; set; }
 
         /// <summary>The Resource Name.</summary>
         public string ResourceName { get; set; }

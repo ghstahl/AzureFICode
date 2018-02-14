@@ -1,6 +1,6 @@
-﻿using AzureChaos.Enums;
+﻿using AzureChaos.Core.Enums;
 
-namespace AzureChaos.Models
+namespace AzureChaos.Core.Models
 {
     /// <summary>The input object for the chaos executer.</summary>
     public class InputObject
@@ -27,7 +27,7 @@ namespace AzureChaos.Models
         public bool UpdateDomain { get; set; }
 
         /// <summary>Percntage of VMs to be under Action</summary>
-        public int VMPercentage { get; set; }
+        public int VmPercentage { get; set; }
 
         /// <summary>Resource Type for which Rule Engine is Triggered</summary>
         public string ResourceType { get; set; }

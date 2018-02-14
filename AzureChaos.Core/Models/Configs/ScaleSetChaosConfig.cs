@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace AzureChaos.Models
+namespace AzureChaos.Core.Models.Configs
 {
     public class ScaleSetChaosConfig
     {
@@ -8,6 +8,6 @@ namespace AzureChaos.Models
         public bool Enabled { get; set; }
 
         [JsonProperty("microsoft.chaos.SS.percentageTermination")]
-        public decimal percentageTermination { get; set; }
+        public decimal PercentageTermination { get; set; }
     }
 }

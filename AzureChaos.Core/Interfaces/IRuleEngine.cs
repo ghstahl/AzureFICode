@@ -1,8 +1,8 @@
-﻿using AzureChaos.Models;
-using System.Threading.Tasks;
+﻿using AzureChaos.Core.Models;
 using Microsoft.Azure.WebJobs.Host;
+using System.Threading.Tasks;
 
-namespace AzureChaos.Interfaces
+namespace AzureChaos.Core.Interfaces
 {
     public interface IRuleEngine
     {

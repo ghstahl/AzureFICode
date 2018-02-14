@@ -1,8 +1,9 @@
-﻿using AzureChaos.Entity;
-using AzureChaos.Enums;
-using AzureChaos.Helper;
-using AzureChaos.Models;
-using AzureChaos.Providers;
+﻿using AzureChaos.Core.Entity;
+using AzureChaos.Core.Enums;
+using AzureChaos.Core.Helper;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
@@ -12,20 +13,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AzureChaos.Interfaces
+namespace AzureChaos.Core.Interfaces
 {
     public class AvailabilitySetRuleEngine : IRuleEngine
     {
-        private AzureSettings azureSettings;
+        private AzureSettings _azureSettings;
 
         public void CreateRule(AzureClient azureClient, TraceWriter log)
         {
             try
             {
                 log.Info("Availability RuleEngine: Started the creating rules for the availability set.");
-                azureSettings = azureClient.azureSettings;
-                Random random = new Random();
-                IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
+                _azureSettings = azureClient.AzureSettings;
+                var random = new Random();
+                var storageAccountProvider = new StorageAccountProvider();
                 var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
                 //1) OpenSearch with Vm Count > 0
                 var possibleAvailabilitySets = GetPossibleAvailabilitySets(storageAccountProvider, storageAccount);
@@ -54,102 +55,102 @@ namespace AzureChaos.Interfaces
             catch (Exception ex)
             {
                 log.Error("Availability RuleEngine: Exception thrown. ", ex);
-                return;
             }
         }
 
         private void InsertVirtualMachineAvailabilitySetDomainResults(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount, string availabilitySetId, int domainNumber)
         {
-            var virtualMachineQuery = string.Empty;
-            if (azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
-            {
-                virtualMachineQuery = TableQuery.CombineFilters((TableQuery.GenerateFilterCondition("AvailableSetId", QueryComparisons.Equal, availabilitySetId)), TableOperators.And, (TableQuery.GenerateFilterConditionForInt("FaultDomain", QueryComparisons.Equal, domainNumber)));
-            }
-            else
-            {
-                virtualMachineQuery = TableQuery.CombineFilters((TableQuery.GenerateFilterCondition("AvailableSetId", QueryComparisons.Equal, availabilitySetId)), TableOperators.And, (TableQuery.GenerateFilterConditionForInt("UpdateDomain", QueryComparisons.Equal, domainNumber)));
-            }
+            var virtualMachineQuery = TableQuery.CombineFilters((TableQuery.GenerateFilterCondition("AvailableSetId",
+                    QueryComparisons.Equal,
+                    availabilitySetId)),
+                TableOperators.And,
+                _azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled
+                    ? TableQuery.GenerateFilterConditionForInt("FaultDomain",
+                        QueryComparisons.Equal,
+                        domainNumber)
+                    : TableQuery.GenerateFilterConditionForInt("UpdateDomain",
+                        QueryComparisons.Equal,
+                        domainNumber));
             //TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThanOrEqual, 0);
-            TableQuery<VirtualMachineCrawlerResponseEntity> virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponseEntity>().Where(virtualMachineQuery);
-            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities<VirtualMachineCrawlerResponseEntity>(virtualMachinesTableQuery, storageAccount, azureSettings.VirtualMachineCrawlerTableName);
-            if (crawledVirtualMachinesResults.Count() > 0)
-            {
-                var sessionId = Guid.NewGuid().ToString();
-                bool domainFlage = true;
-                if (azureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled)
-                {
-                    domainFlage = false;
-                }
-                TableBatchOperation scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(crawledVirtualMachinesResults.ToList(), azureSettings.Chaos.SchedulerFrequency, domainFlage);
-                if (scheduledRulesbatchOperation.Count > 0)
-                {
-                    CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduledRulesTable);
-                    Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
-                }
-            }
+            var virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(virtualMachineQuery);
+            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities(virtualMachinesTableQuery, storageAccount, _azureSettings.VirtualMachineCrawlerTableName);
+            var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
+            if (!virtualMachinesResults.Any()) return;
+            var domainFlag = !_azureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
+            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults.ToList(), _azureSettings.Chaos.SchedulerFrequency, domainFlag);
+            if (scheduledRulesbatchOperation.Count <= 0) return;
+            var table = storageAccountProvider.CreateOrGetTable(storageAccount, _azureSettings.ScheduledRulesTable);
+            Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
         }
 
-        private List<string> GetRecentlyExecutedAvailabilitySetDomainCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
+        private IEnumerable<string> GetRecentlyExecutedAvailabilitySetDomainCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
         {
-            List<string> recentlyExecutedAvailabilitySetDomainCombination = new List<string>();
-            Dictionary<string, int> possibleAvailabilitySetDomainCombinationVMCount = new Dictionary<string, int>();
-            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow.AddMinutes(-120));
-            var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, VirtualMachineGroup.AvailabilitySets.ToString());
-            var recentlyExecutedFinalAvailabilitySetDomainQuery = TableQuery.CombineFilters(meanTimeQuery, TableOperators.And, recentlyExecutedAvailabilitySetDomainCombinationQuery);
-            TableQuery<ScheduledRulesEntity> scheduledQuery = new TableQuery<ScheduledRulesEntity>().Where(recentlyExecutedFinalAvailabilitySetDomainQuery);
-            var executedAvilabilitySetCombinationResults = storageAccountProvider.GetEntities<ScheduledRulesEntity>(scheduledQuery, storageAccount, azureSettings.ScheduledRulesTable);
-            if (executedAvilabilitySetCombinationResults != null)
+            var recentlyExecutedAvailabilitySetDomainCombination = new List<string>();
+            var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
+            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
+                QueryComparisons.GreaterThanOrEqual,
+                DateTimeOffset.UtcNow.AddMinutes(-_azureSettings.Chaos.SchedulerFrequency));
+
+            var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition(
+                "PartitionKey",
+                QueryComparisons.Equal,
+                VirtualMachineGroup.AvailabilitySets.ToString());
+
+            var recentlyExecutedFinalAvailabilitySetDomainQuery = TableQuery.CombineFilters(meanTimeQuery,
+                TableOperators.And,
+                recentlyExecutedAvailabilitySetDomainCombinationQuery);
+
+            var scheduledQuery = new TableQuery<ScheduledRules>().Where(recentlyExecutedFinalAvailabilitySetDomainQuery);
+            var executedAvilabilitySetCombinationResults = storageAccountProvider.GetEntities(scheduledQuery, storageAccount, _azureSettings.ScheduledRulesTable);
+            if (executedAvilabilitySetCombinationResults == null)
+                return recentlyExecutedAvailabilitySetDomainCombination;
+
+            foreach (var eachExecutedAvilabilitySetCombinationResults in executedAvilabilitySetCombinationResults)
             {
-                foreach (var eachExecutedAvilabilitySetCombinationResults in executedAvilabilitySetCombinationResults)
+                if (_azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
-                    if (azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("!")) continue;
+
+                    if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.CombinationKey))
                     {
-                        if (eachExecutedAvilabilitySetCombinationResults.combinationKey.Contains("!"))
-                        {
-                            if (possibleAvailabilitySetDomainCombinationVMCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.combinationKey))
-                            {
-                                possibleAvailabilitySetDomainCombinationVMCount[eachExecutedAvilabilitySetCombinationResults.combinationKey] += 1;
-                            }
-                            else
-                            {
-                                possibleAvailabilitySetDomainCombinationVMCount[eachExecutedAvilabilitySetCombinationResults.combinationKey] = 1;
-                            }
-                        }
+                        possibleAvailabilitySetDomainCombinationVmCount[eachExecutedAvilabilitySetCombinationResults.CombinationKey] += 1;
                     }
                     else
                     {
-                        if (eachExecutedAvilabilitySetCombinationResults.combinationKey.Contains("@"))
-                        {
-                            if (possibleAvailabilitySetDomainCombinationVMCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.combinationKey))
-                            {
-                                possibleAvailabilitySetDomainCombinationVMCount[eachExecutedAvilabilitySetCombinationResults.combinationKey] += 1;
-                            }
-                            else
-                            {
-                                possibleAvailabilitySetDomainCombinationVMCount[eachExecutedAvilabilitySetCombinationResults.combinationKey] = 1;
-                            }
-                        }
+                        possibleAvailabilitySetDomainCombinationVmCount[eachExecutedAvilabilitySetCombinationResults.CombinationKey] = 1;
                     }
                 }
-                recentlyExecutedAvailabilitySetDomainCombination = new List<string>(possibleAvailabilitySetDomainCombinationVMCount.Keys);
+                else
+                {
+                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("@")) continue;
+
+                    if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.CombinationKey))
+                    {
+                        possibleAvailabilitySetDomainCombinationVmCount[eachExecutedAvilabilitySetCombinationResults.CombinationKey] += 1;
+                    }
+                    else
+                    {
+                        possibleAvailabilitySetDomainCombinationVmCount[eachExecutedAvilabilitySetCombinationResults.CombinationKey] = 1;
+                    }
+                }
             }
+            recentlyExecutedAvailabilitySetDomainCombination = new List<string>(possibleAvailabilitySetDomainCombinationVmCount.Keys);
             return recentlyExecutedAvailabilitySetDomainCombination;
         }
         private List<string> GetPossibleAvailabilitySets(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
         {
-            List<string> possibleAvailableSets = new List<string>();
             var availabilitySetQuery = TableQuery.GenerateFilterCondition("Virtualmachines", QueryComparisons.NotEqual, "");
-            TableQuery<AvailabilitySetsCrawlerResponseEntity> AvailabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponseEntity>().Where(availabilitySetQuery);
+            var availabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponseEntity>().Where(availabilitySetQuery);
 
-            var crawledAvailabilitySetResults = storageAccountProvider.GetEntities<AvailabilitySetsCrawlerResponseEntity>(AvailabilitySetTableQuery, storageAccount, azureSettings.AvailabilitySetCrawlerTableName);
+            var crawledAvailabilitySetResults = storageAccountProvider.GetEntities(availabilitySetTableQuery, storageAccount, _azureSettings.AvailabilitySetCrawlerTableName);
             if (crawledAvailabilitySetResults == null)
             {
                 return null;
             }
 
-            Dictionary<string, int> possibleAvailabilitySetDomainCombinationVMCount = new Dictionary<string, int>();
+            var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
             var bootStrapQuery = string.Empty;
-            bool initialQuery = true;
+            var initialQuery = true;
             foreach (var eachAvailabilitySet in crawledAvailabilitySetResults)
             {
                 if (initialQuery)
@@ -164,35 +165,35 @@ namespace AzureChaos.Interfaces
                 }
             }
 
-            TableQuery<VirtualMachineCrawlerResponseEntity> VirtualMachineTableQuery = new TableQuery<VirtualMachineCrawlerResponseEntity>().Where(bootStrapQuery);
-            var crawledVirtualMachineResults = storageAccountProvider.GetEntities<VirtualMachineCrawlerResponseEntity>(VirtualMachineTableQuery, storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+            var virtualMachineTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(bootStrapQuery);
+            var crawledVirtualMachineResults = storageAccountProvider.GetEntities(virtualMachineTableQuery, storageAccount, _azureSettings.VirtualMachineCrawlerTableName);
             foreach (var eachVirtualMachine in crawledVirtualMachineResults)
             {
-                var entryIntoPossibleAvailabilitySetDomainCombinationVMCount = string.Empty;
-                if (azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;
+                if (_azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVMCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.FaultDomain.ToString();
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.FaultDomain;
                 }
                 else
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVMCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.UpdateDomain.ToString();
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.UpdateDomain;
                 }
 
-                if (possibleAvailabilitySetDomainCombinationVMCount.ContainsKey(entryIntoPossibleAvailabilitySetDomainCombinationVMCount))
+                if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(entryIntoPossibleAvailabilitySetDomainCombinationVmCount))
                 {
-                    possibleAvailabilitySetDomainCombinationVMCount[entryIntoPossibleAvailabilitySetDomainCombinationVMCount] += 1;
+                    possibleAvailabilitySetDomainCombinationVmCount[entryIntoPossibleAvailabilitySetDomainCombinationVmCount] += 1;
                 }
                 else
                 {
-                    possibleAvailabilitySetDomainCombinationVMCount[entryIntoPossibleAvailabilitySetDomainCombinationVMCount] = 1;
+                    possibleAvailabilitySetDomainCombinationVmCount[entryIntoPossibleAvailabilitySetDomainCombinationVmCount] = 1;
                 }
             }
 
-            possibleAvailableSets = new List<string>(possibleAvailabilitySetDomainCombinationVMCount.Keys);
+            var possibleAvailableSets = new List<string>(possibleAvailabilitySetDomainCombinationVmCount.Keys);
             return possibleAvailableSets;
         }
 
-        private string ConvertToProperAvailableSetId(string rowKey)
+        private static string ConvertToProperAvailableSetId(string rowKey)
         {
             var rowKeyChunks = rowKey.Split('!');
             return string.Join("/", rowKeyChunks).Replace(rowKeyChunks.Last(), rowKeyChunks.Last().ToUpper());

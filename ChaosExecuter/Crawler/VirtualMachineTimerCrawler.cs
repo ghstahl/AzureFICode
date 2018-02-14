@@ -1,7 +1,6 @@
-using AzureChaos.Helper;
-using AzureChaos.Models;
-using AzureChaos.Providers;
-using Microsoft.Azure.Management.Compute.Fluent;
+using AzureChaos.Core.Helper;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -23,10 +22,10 @@ namespace ChaosExecuter.Crawler
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
             try
             {
-                var azureSettings = AzureClient.azureSettings;
+                var azureSettings = AzureClient.AzureSettings;
 
                 // will be listing out only the standalone virtual machines.
-                var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.azure, azureSettings);
+                var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.AzureInstance, azureSettings);
                 if (resourceGroupList == null)
                 {
                     log.Info($"timercrawlerforvirtualmachines: no resource groups to crawl");
@@ -35,8 +34,8 @@ namespace ChaosExecuter.Crawler
 
                 foreach (var resourceGroup in resourceGroupList)
                 {
-                    List<string> loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
-                    var pagedCollection = await AzureClient.azure.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
+                    var loadBalancersVms = await GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
+                    var pagedCollection = await AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
                     if (pagedCollection == null || !pagedCollection.Any())
                     {
                         continue;
@@ -45,27 +44,25 @@ namespace ChaosExecuter.Crawler
                     var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
                     var virtualMachines = pagedCollection.Select(x => x).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId) &&
                     !loadBalancersVms.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
-                    if(virtualMachines == null || !virtualMachines.Any())
+                    var machines = virtualMachines.ToList();
+                    if(!machines.Any())
                     {
                         return;
                     }
 
-                    /// Unique key of the table entry will be calculated based on the resourcegroup(as partitionkey) and resource name(as row key).
-                    /// So here grouping is needed, since vm groups can be different, table batch operation will not be allowing the different partition keys(i.e. group name can be different) in one batch operation
-                    var groupByResourceGroupName = virtualMachines.GroupBy(x => x.ResourceGroupName).ToList();
+                    var vmList = machines.ToList();
+                    var groupByResourceGroupName = vmList.GroupBy(x => x.ResourceGroupName).ToList();
                     foreach (var groupItem in groupByResourceGroupName)
                     {
                         TableBatchOperation batchOperation = new TableBatchOperation();
-                        foreach (IVirtualMachine virtualMachine in groupItem)
+                        foreach (var virtualMachine in groupItem)
                         {
                             batchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, virtualMachine.ResourceGroupName));
                         }
 
-                        if (batchOperation.Count > 0)
-                        {
-                            CloudTable table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
-                            await table.ExecuteBatchAsync(batchOperation);
-                        }
+                        if (batchOperation.Count <= 0) continue;
+                        var table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+                        await table.ExecuteBatchAsync(batchOperation);
                     }
                 }
             }
@@ -76,24 +73,26 @@ namespace ChaosExecuter.Crawler
         }
 
         /// <summary>Get the list of </summary>
-        /// <param name="azure_client"></param>
+        /// <param name="resourceGroup"></param>
+        /// <param name="log"></param>
         /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
         private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
             var vmIds = new List<string>();
-            var pagedCollection = await AzureClient.azure.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            var pagedCollection = await AzureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
             if (pagedCollection == null)
             {
                 return vmIds;
             }
 
             var loadBalancers = pagedCollection.Select(x => x);
-            if (loadBalancers == null || !loadBalancers.Any())
+            var balancers = loadBalancers.ToList();
+            if (!balancers.Any())
             {
                 return vmIds;
             }
-            vmIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
+            vmIds.AddRange(balancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
             return vmIds;
         }
     }

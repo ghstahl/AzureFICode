@@ -1,11 +1,11 @@
-﻿using AzureChaos.Models;
+﻿using AzureChaos.Core.Models.Configs;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AzureChaos.Helper
+namespace AzureChaos.Core.Helper
 {
     public class ResourceGroupHelper
     {
@@ -23,19 +23,17 @@ namespace AzureChaos.Helper
             var resourceGroups = resourceGroupList.Where(x => blackListedResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
             if (string.IsNullOrWhiteSpace(specifiedResourceGroups))
             {
-                return resourceGroups?.ToList();
+                return resourceGroups.ToList();
             }
 
             var includedResourceGroups = specifiedResourceGroups.Split(',');
             if (includedResourceGroups != null && includedResourceGroups[0].Equals("all", StringComparison.OrdinalIgnoreCase))
             {
-                return resourceGroups?.ToList();
+                return resourceGroups.ToList();
             }
-            else
-            {
-                resourceGroups = resourceGroups.Where(x => includedResourceGroups.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
-                return resourceGroups?.ToList();
-            }
+
+            resourceGroups = resourceGroups.Where(x => includedResourceGroups.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
+            return resourceGroups.ToList();
         }
     }
 }

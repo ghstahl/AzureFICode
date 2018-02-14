@@ -1,8 +1,8 @@
-using AzureChaos.Enums;
-using AzureChaos.Helper;
-using AzureChaos.Interfaces;
-using AzureChaos.Models;
-using AzureChaos.Providers;
+using AzureChaos.Core.Enums;
+using AzureChaos.Core.Helper;
+using AzureChaos.Core.Interfaces;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using System;
@@ -19,7 +19,7 @@ namespace ChaosExecuter.Schedulers
         public static void Run([TimerTrigger("0 0 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info("C# RuleEngine: trigger function started processing the request.");
-            var azureSettings = AzureClient.azureSettings;
+            var azureSettings = AzureClient.AzureSettings;
             if (azureSettings?.Chaos == null || !azureSettings.Chaos.ChaosEnabled)
             {
                 log.Info("C# RuleEngine: Chaos is not enabled.");
@@ -58,7 +58,7 @@ namespace ChaosExecuter.Schedulers
                     availabilityZone.CreateRule(AzureClient, log);
                     break;
                 default:
-                    break;
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

@@ -1,15 +1,15 @@
-﻿namespace AzureChaos.Entity
+﻿namespace AzureChaos.Core.Entity
 {
-    public class VirtualMachineCrawlerResponseEntity : CrawlerResponseEntity
+    public class VirtualMachineCrawlerResponse : CrawlerResponse
     {
-        public VirtualMachineCrawlerResponseEntity()
+        public VirtualMachineCrawlerResponse()
         {
         }
 
-        public VirtualMachineCrawlerResponseEntity(string partitionKey, string rowKey)
+        public VirtualMachineCrawlerResponse(string partitionKey, string rowKey)
         {
-            this.PartitionKey = partitionKey;
-            this.RowKey = rowKey;
+            PartitionKey = partitionKey;
+            RowKey = rowKey;
         }
 
         /// <summary>Power state of the resource.</summary>

@@ -1,4 +1,4 @@
-﻿namespace AzureChaos.Enums
+﻿namespace AzureChaos.Core.Enums
 {
     public enum Status
     {

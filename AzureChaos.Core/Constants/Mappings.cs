@@ -1,8 +1,8 @@
-﻿using AzureChaos.Enums;
-using AzureChaos.Models;
+﻿using AzureChaos.Core.Enums;
+using AzureChaos.Core.Models.Configs;
 using System.Collections.Generic;
 
-namespace AzureChaos.Constants
+namespace AzureChaos.Core.Constants
 {
     public class Mappings
     {

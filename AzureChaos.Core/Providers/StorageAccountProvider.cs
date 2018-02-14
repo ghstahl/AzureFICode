@@ -1,15 +1,15 @@
-﻿using AzureChaos.Models;
+﻿using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Blob;
-using System;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AzureChaos.Providers
+namespace AzureChaos.Core.Providers
 {
     /// <summary>The storage account provider.</summary>
     /// Creates the storage account if not any for the given storage account name in the config.
@@ -17,32 +17,29 @@ namespace AzureChaos.Providers
     public class StorageAccountProvider : IStorageAccountProvider
     {
         /// <summary>Default format for the storage connection string.</summary>
-        private const string connectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
+        private const string ConnectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        public Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureSettings azureSettings)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<CloudStorageAccount> CreateOrGetStorageAccountAsync(AzureSettings azureSettings) => throw new NotImplementedException();
 
         public CloudStorageAccount CreateOrGetStorageAccount(AzureClient azureClient)
         {
-            var azureSettings = azureClient.azureSettings;
-            string rgName = azureSettings.Client.ResourceGroup;
-            var storage = azureClient.azure.StorageAccounts.Define(azureSettings.Client.StorageAccountName)
+            var azureSettings = azureClient.AzureSettings;
+            var rgName = azureSettings.Client.ResourceGroup;
+            var storage = azureClient.AzureInstance.StorageAccounts.Define(azureSettings.Client.StorageAccountName)
                 .WithRegion(azureSettings.Client.Region)
                 .WithExistingResourceGroup(rgName)
                 .Create();
 
             var storageKeys = storage.GetKeys();
-            return CloudStorageAccount.Parse(string.Format(connectionStringFormat, azureSettings.Client.StorageAccountName, storageKeys[0].Value));
+            return CloudStorageAccount.Parse(string.Format(ConnectionStringFormat, azureSettings.Client.StorageAccountName, storageKeys[0].Value));
         }
 
         public async Task<CloudTable> CreateOrGetTableAsync(CloudStorageAccount storageAccount, string tableName)
         {
-            var tableClient = storageAccount.CreateCloudTableClient(); ;
+            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException("storageAccount.CreateCloudTableClient()");
 
             // Retrieve a reference to the table.
-            CloudTable table = tableClient.GetTableReference(tableName);
+            var table = tableClient.GetTableReference(tableName);
 
             // Create the table if it doesn't exist.
             await table.CreateIfNotExistsAsync();
@@ -51,10 +48,10 @@ namespace AzureChaos.Providers
 
         public CloudTable CreateOrGetTable(CloudStorageAccount storageAccount, string tableName)
         {
-            var tableClient = storageAccount.CreateCloudTableClient(); ;
+            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException("storageAccount.CreateCloudTableClient()");
 
             // Retrieve a reference to the table.
-            CloudTable table = tableClient.GetTableReference(tableName);
+            var table = tableClient.GetTableReference(tableName);
 
             // Create the table if it doesn't exist.
             Extensions.Synchronize(() => table.CreateIfNotExistsAsync());
@@ -96,12 +93,11 @@ namespace AzureChaos.Providers
             Extensions.Synchronize(() => table.ExecuteAsync(tableOperation));
         }
 
-        public async Task<IEnumerable<T>> GetEntitiesAsync<T>(TableQuery<T> query, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity, new()
+        public async Task<IEnumerable<T>> GetEntitiesAsync<T>(TableQuery<T> query,
+            CloudStorageAccount storageAccount,
+            string tableName) where T : ITableEntity, new()
         {
-            if (query == null)
-            {
-                return null;
-            }
+            if (query == null) throw new ArgumentNullException(nameof(query));
 
             var table = CreateOrGetTable(storageAccount, tableName);
             if (table == null)
@@ -113,19 +109,18 @@ namespace AzureChaos.Providers
             IEnumerable<T> results = null;
             do
             {
-                var result = await table.ExecuteQuerySegmentedAsync<T>(query, continuationToken);
-                if (result != null)
-                {
-                    results = results.Concat(result.Results);
-                }
-
+                var result = await table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                if (result == null) continue;
+                results = results.Concat(result.Results);
                 continuationToken = result.ContinuationToken;
             } while (continuationToken != null);
 
             return results;
         }
 
-        public IEnumerable<T> GetEntities<T>(TableQuery<T> query, CloudStorageAccount storageAccount, string tableName) where T : ITableEntity, new()
+        public IEnumerable<T> GetEntities<T>(TableQuery<T> query,
+            CloudStorageAccount storageAccount,
+            string tableName) where T : ITableEntity, new()
         {
             if (query == null)
             {
@@ -142,15 +137,9 @@ namespace AzureChaos.Providers
             IEnumerable<T> results = null;
             do
             {
-                var result = Extensions.Synchronize(() => table.ExecuteQuerySegmentedAsync<T>(query, continuationToken));
-                if (results != null)
-                {
-                    results = results.Concat(result.Results);
-                }
-                else
-                {
-                    results = result;
-                }
+                var token = continuationToken;
+                var result = Extensions.Synchronize(() => table.ExecuteQuerySegmentedAsync(query, token));
+                results = results != null ? results.Concat(result.Results) : result;
 
                 continuationToken = result.ContinuationToken;
             } while (continuationToken != null);

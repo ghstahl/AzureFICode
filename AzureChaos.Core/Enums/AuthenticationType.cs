@@ -1,4 +1,4 @@
-﻿namespace AzureChaos.Enums
+﻿namespace AzureChaos.Core.Enums
 {
     /// <summary>Azure authentication type enum</summary>
     public enum AuthenticationType

@@ -1,6 +1,6 @@
-using AzureChaos.Entity;
-using AzureChaos.Models;
-using AzureChaos.Providers;
+using AzureChaos.Core.Entity;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -17,14 +17,14 @@ namespace ChaosExecuter.Crawler
         public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.UtcNow}");
-            TableBatchOperation batchOperation = new TableBatchOperation();
-            var azureSettings = AzureClient.azureSettings;
+            var batchOperation = new TableBatchOperation();
+            var azureSettings = AzureClient.AzureSettings;
             try
             {
-                var resourceGroups = AzureClient.azure.ResourceGroups.List();
+                var resourceGroups = AzureClient.AzureInstance.ResourceGroups.List();
                 foreach (var resourceGroup in resourceGroups)
                 {
-                    ResourceGroupCrawlerResponseEntity resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponseEntity("crawlrg", resourceGroup.Id.Replace("/", "-"));
+                    var resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponse("crawlrg", resourceGroup.Id.Replace("/", "-"));
                     try
                     {
                         resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.UtcNow;
@@ -48,7 +48,7 @@ namespace ChaosExecuter.Crawler
             var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             if (batchOperation.Count > 0)
             {
-                CloudTable table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ResourceGroupCrawlerTableName);
+                var table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ResourceGroupCrawlerTableName);
                 await table.ExecuteBatchAsync(batchOperation);
             }
         }

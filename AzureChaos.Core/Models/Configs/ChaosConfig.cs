@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 
-namespace AzureChaos.Models
+namespace AzureChaos.Core.Models.Configs
 {
     public class ChaosConfig
     {

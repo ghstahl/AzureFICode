@@ -1,7 +1,8 @@
-﻿using AzureChaos.Entity;
-using AzureChaos.Helper;
-using AzureChaos.Models;
-using AzureChaos.Providers;
+﻿using AzureChaos.Core.Entity;
+using AzureChaos.Core.Enums;
+using AzureChaos.Core.Helper;
+using AzureChaos.Core.Models;
+using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
@@ -10,20 +11,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AzureChaos.Enums;
+using AzureChaos.Core.Models.Configs;
 
-namespace AzureChaos.Interfaces
+namespace AzureChaos.Core.Interfaces
 {
     public class AvailabilityZoneRuleEngine : IRuleEngine
     {
-        private AzureSettings azureSettings;
+        private AzureSettings _azureSettings;
 
         public void CreateRule(AzureClient azureClient, TraceWriter log)
         {
             log.Info("AvailabilityZone RuleEngine: Started the creating rules for the scale set.");
             try
             {
-                azureSettings = azureClient.azureSettings;
+                _azureSettings = azureClient.AzureSettings;
                 IStorageAccountProvider storageAccountProvider = new StorageAccountProvider();
                 var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
                 var possibleAvailabilityZoneRegionCombinations = GetAllPossibleAvailabilityZoneRegionCombination(storageAccountProvider, storageAccount);
@@ -42,7 +43,7 @@ namespace AzureChaos.Interfaces
                 }
 
                 var avilabilityZoneRegionCombinationsList = avilabilityZoneRegionCombinations.ToList();
-                Random random = new Random();
+                var random = new Random();
                 var randomAvailabilityZoneRegion = avilabilityZoneRegionCombinationsList[random.Next(0, avilabilityZoneRegionCombinationsList.Count - 1)];
                 var componentsInRandomAvailabilityZoneRegion = randomAvailabilityZoneRegion.Split('!');
                 var availabilityZone = int.Parse(componentsInRandomAvailabilityZoneRegion.Last());
@@ -52,7 +53,6 @@ namespace AzureChaos.Interfaces
             catch (Exception ex)
             {
                 log.Error("AvailabilityZone RuleEngine: thrown exception", ex);
-                return;
             }
         }
 
@@ -60,72 +60,82 @@ namespace AzureChaos.Interfaces
         {
             var virtualMachineQuery = TableQuery.CombineFilters((TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.Equal, availbilityZone)), TableOperators.And, (TableQuery.GenerateFilterCondition("RegionName", QueryComparisons.Equal, region)));
             //TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThanOrEqual, 0);
-            TableQuery<VirtualMachineCrawlerResponseEntity> virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponseEntity>().Where(virtualMachineQuery);
-            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities<VirtualMachineCrawlerResponseEntity>(virtualMachinesTableQuery, storageAccount, azureSettings.VirtualMachineCrawlerTableName);
-            if (crawledVirtualMachinesResults.Count() > 0)
-            {
-                var sessionId = Guid.NewGuid().ToString();
-                TableBatchOperation scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilityZone(crawledVirtualMachinesResults.ToList(), azureSettings.Chaos.SchedulerFrequency);
-                if (scheduledRulesbatchOperation.Count > 0)
-                {
-                    CloudTable table = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.ScheduledRulesTable);
-                    Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
-                }
-            }
+            var virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(virtualMachineQuery);
+            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities(
+                virtualMachinesTableQuery,
+                storageAccount,
+                _azureSettings.VirtualMachineCrawlerTableName);
+
+            var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
+            if (!virtualMachinesResults.Any()) return;
+            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilityZone(virtualMachinesResults.ToList(), _azureSettings.Chaos.SchedulerFrequency);
+            if (scheduledRulesbatchOperation.Count <= 0) return;
+            var table = storageAccountProvider.CreateOrGetTable(storageAccount, _azureSettings.ScheduledRulesTable);
+            Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
         }
 
-        private List<string> GetRecentlyExecutedAvailabilityZoneRegionCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
+        private IEnumerable<string> GetRecentlyExecutedAvailabilityZoneRegionCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
         {
-            List<string> recentlyExecutedAvailabilityZoneRegionCombination = new List<string>();
-            Dictionary<string, int> possibleAvailabilityZoneRegionCombinationVMCount = new Dictionary<string, int>();
-            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow.AddMinutes(-120));
-            var recentlyExecutedAvailabilityZoneRegionCombinationQuery = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, VirtualMachineGroup.AvailabilityZones.ToString());
-            var recentlyExecutedFinalAvailabilityZoneRegionQuery = TableQuery.CombineFilters(meanTimeQuery, TableOperators.And, recentlyExecutedAvailabilityZoneRegionCombinationQuery);
-            TableQuery<ScheduledRulesEntity> scheduledQuery = new TableQuery<ScheduledRulesEntity>().Where(recentlyExecutedFinalAvailabilityZoneRegionQuery);
-            var executedAvilabilityZoneCombinationResults = storageAccountProvider.GetEntities<ScheduledRulesEntity>(scheduledQuery, storageAccount, azureSettings.ScheduledRulesTable);
-            if (executedAvilabilityZoneCombinationResults != null)
-            {
-                foreach (var eachExecutedAvilabilityZoneCombinationResults in executedAvilabilityZoneCombinationResults)
-                {
-                    if (eachExecutedAvilabilityZoneCombinationResults.combinationKey.Contains("!"))
-                    {
-                        if (possibleAvailabilityZoneRegionCombinationVMCount.ContainsKey(eachExecutedAvilabilityZoneCombinationResults.combinationKey))
-                        {
-                            possibleAvailabilityZoneRegionCombinationVMCount[eachExecutedAvilabilityZoneCombinationResults.combinationKey] += 1;
-                        }
-                        else
-                        {
-                            possibleAvailabilityZoneRegionCombinationVMCount[eachExecutedAvilabilityZoneCombinationResults.combinationKey] = 1;
-                        }
-                    }
+            var recentlyExecutedAvailabilityZoneRegionCombination = new List<string>();
+            var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
+            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
+                QueryComparisons.GreaterThanOrEqual,
+                DateTimeOffset.UtcNow.AddMinutes(-_azureSettings.Chaos.SchedulerFrequency));
 
+            var recentlyExecutedAvailabilityZoneRegionCombinationQuery = TableQuery.GenerateFilterCondition(
+                "PartitionKey",
+                QueryComparisons.Equal,
+                VirtualMachineGroup.AvailabilityZones.ToString());
+
+            var recentlyExecutedFinalAvailabilityZoneRegionQuery = TableQuery.CombineFilters(meanTimeQuery,
+                TableOperators.And,
+                recentlyExecutedAvailabilityZoneRegionCombinationQuery);
+
+            var scheduledQuery = new TableQuery<ScheduledRules>().Where(recentlyExecutedFinalAvailabilityZoneRegionQuery);
+            var executedAvilabilityZoneCombinationResults = storageAccountProvider.GetEntities(scheduledQuery, storageAccount, _azureSettings.ScheduledRulesTable);
+            if (executedAvilabilityZoneCombinationResults == null)
+                return recentlyExecutedAvailabilityZoneRegionCombination;
+
+            foreach (var eachExecutedAvilabilityZoneCombinationResults in executedAvilabilityZoneCombinationResults)
+            {
+                if (!eachExecutedAvilabilityZoneCombinationResults.CombinationKey.Contains("!")) continue;
+
+                if (possibleAvailabilityZoneRegionCombinationVmCount.ContainsKey(eachExecutedAvilabilityZoneCombinationResults.CombinationKey))
+                {
+                    possibleAvailabilityZoneRegionCombinationVmCount[eachExecutedAvilabilityZoneCombinationResults.CombinationKey] += 1;
                 }
-                recentlyExecutedAvailabilityZoneRegionCombination = new List<string>(possibleAvailabilityZoneRegionCombinationVMCount.Keys);
+                else
+                {
+                    possibleAvailabilityZoneRegionCombinationVmCount[eachExecutedAvilabilityZoneCombinationResults.CombinationKey] = 1;
+                }
+
             }
+            recentlyExecutedAvailabilityZoneRegionCombination = new List<string>(possibleAvailabilityZoneRegionCombinationVmCount.Keys);
             return recentlyExecutedAvailabilityZoneRegionCombination;
         }
         private List<string> GetAllPossibleAvailabilityZoneRegionCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
         {
             //virtualMachineTable = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
-            List<string> possibleAvailabilityZoneRegionCombination = new List<string>();
-            Dictionary<string, int> possibleAvailabilityZoneRegionCombinationVMCount = new Dictionary<string, int>();
-            var crawledAvailabilityZoneVMQuery =
+            var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
+            var crawledAvailabilityZoneVmQuery =
                 TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThan, 0);
-            TableQuery<VirtualMachineCrawlerResponseEntity> availabilityZoneTableQuery = new TableQuery<VirtualMachineCrawlerResponseEntity>().Where(crawledAvailabilityZoneVMQuery);
-            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities<VirtualMachineCrawlerResponseEntity>(availabilityZoneTableQuery, storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+
+            var availabilityZoneTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(crawledAvailabilityZoneVmQuery);
+            var crawledVirtualMachinesResults = storageAccountProvider.GetEntities(availabilityZoneTableQuery, storageAccount, _azureSettings.VirtualMachineCrawlerTableName);
             foreach (var eachCrawledVirtualMachinesResult in crawledVirtualMachinesResults)
             {
-                var entryIntoPossibleAvailabilityZoneRegionCombinationVMCount = eachCrawledVirtualMachinesResult.RegionName + "!" + eachCrawledVirtualMachinesResult.AvailabilityZone.ToString();
-                if (possibleAvailabilityZoneRegionCombinationVMCount.ContainsKey(entryIntoPossibleAvailabilityZoneRegionCombinationVMCount))
+                var entryIntoPossibleAvailabilityZoneRegionCombinationVmCount = eachCrawledVirtualMachinesResult.RegionName + "!" + eachCrawledVirtualMachinesResult.AvailabilityZone.ToString();
+                if (possibleAvailabilityZoneRegionCombinationVmCount.ContainsKey(entryIntoPossibleAvailabilityZoneRegionCombinationVmCount))
                 {
-                    possibleAvailabilityZoneRegionCombinationVMCount[entryIntoPossibleAvailabilityZoneRegionCombinationVMCount] += 1;
+                    possibleAvailabilityZoneRegionCombinationVmCount[entryIntoPossibleAvailabilityZoneRegionCombinationVmCount] += 1;
                 }
                 else
                 {
-                    possibleAvailabilityZoneRegionCombinationVMCount[entryIntoPossibleAvailabilityZoneRegionCombinationVMCount] = 1;
+                    possibleAvailabilityZoneRegionCombinationVmCount[entryIntoPossibleAvailabilityZoneRegionCombinationVmCount] = 1;
                 }
             }
-            return new List<string>(possibleAvailabilityZoneRegionCombinationVMCount.Keys);
+
+            return new List<string>(possibleAvailabilityZoneRegionCombinationVmCount.Keys);
         }
         public Task CreateRuleAsync(AzureClient azureClient)
         {

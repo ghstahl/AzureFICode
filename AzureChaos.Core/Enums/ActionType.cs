@@ -1,4 +1,4 @@
-﻿namespace AzureChaos.Enums
+﻿namespace AzureChaos.Core.Enums
 {
     /// <summary>Possible action on Virtual Machine</summary>
     public enum ActionType

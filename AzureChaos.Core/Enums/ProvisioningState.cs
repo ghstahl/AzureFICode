@@ -1,4 +1,4 @@
-﻿namespace AzureChaos.Enums
+﻿namespace AzureChaos.Core.Enums
 {
     /// <summary>
     /// Defines values for ProvisioningState.

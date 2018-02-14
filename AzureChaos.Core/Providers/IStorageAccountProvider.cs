@@ -1,10 +1,11 @@
-﻿using AzureChaos.Models;
+﻿using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace AzureChaos.Providers
+namespace AzureChaos.Core.Providers
 {
     public interface IStorageAccountProvider
     {
