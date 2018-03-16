@@ -13,3 +13,11 @@
 /AzureChaos/AzureChaos.csproj.user
 /AzureChaos.Core/AzureChaos.Core.csproj.user
 /VirtualMachineChaosExecuter/obj/Debug/net461
+/AzureFaultInjection/bin/
+/AzureFaultInjection/obj/
+/AzureFaultInjection/obj/Release/
+/AzureFaultInjection/AzureFaultInjection.csproj.user
+/AzureFaultInjection/obj/Debug/
+/packages
+/AzureChaos.sln.DotSettings.user
+/ChaosExecuter/Properties/PublishProfiles/AzureChaos - Web Deploy.pubxml

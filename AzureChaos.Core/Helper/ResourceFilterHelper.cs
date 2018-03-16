@@ -1,11 +1,10 @@
 ﻿using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using AzureChaos.Core.Entity;
 
 namespace AzureChaos.Core.Helper
 {
@@ -33,77 +32,85 @@ namespace AzureChaos.Core.Helper
             }
         }
 
-        public static List<T> QueryByMeanTime<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
+        public static List<T> QueryCrawlerResponseByMeanTime<T>(AzureSettings azureSettings,
+            string tableName,
+            string filter = "") where T : CrawlerResponse, new()
         {
             var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(GetInsertionDatetimeFilter(azureSettings, filter));
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("Timestamp",
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate("Timestamp",
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.CrawlerFrequency)));
+            var combineFilter = !string.IsNullOrWhiteSpace(filter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    filter)
+                : dateFilter;
+            tableQuery = tableQuery.Where(combineFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 
-        public static async Task<List<T>> QueryByMeanTimeAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
+        public static List<ScheduledRules> QuerySchedulesByMeanTime<T>(AzureSettings azureSettings,
+            string tableName,
+            string filter = "")
         {
-            var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(GetInsertionDatetimeFilter(azureSettings, filter));
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
+            var tableQuery = new TableQuery<ScheduledRules>();
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.MeanTime)));
+            var combineFilter = !string.IsNullOrWhiteSpace(filter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    filter)
+                : dateFilter;
+            tableQuery = tableQuery.Where(combineFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
-
-        public static List<T> QueryByPartitionKey<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-          string partitionKey, string tableName) where T : ITableEntity, new()
+        
+        public static List<T> QueryByPartitionKey<T>(string partitionKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
             tableQuery = tableQuery.Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey));
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 
-        public static async Task<List<T>> QueryByPartitionKeyAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-         string partitionKey, string tableName) where T : ITableEntity, new()
-        {
-            var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey));
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
-            return resultsSet.ToList();
-        }
-
-        public static List<T> QueryByPartitionKeyAndRowKey<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
+        public static List<T> QueryByPartitionKeyAndRowKey<T>(string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
             var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey),
                 TableOperators.And,
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, rowKey));
             tableQuery = tableQuery.Where(dateFilter);
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 
-        public static async Task<List<T>> QueryByPartitionKeyAndRowKeyAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
+        public static List<T> QueryByFromToDate<T>(DateTimeOffset fromDate,
+            DateTimeOffset toDate,
+            string propertyName,
+            string tableName)
+            where T : ITableEntity, new()
         {
-            TableQuery<T> tableQuery = new TableQuery<T>();
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey),
+            var tableQuery = new TableQuery<T>();
+            var dateFilter = TableQuery.CombineFilters(
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.GreaterThanOrEqual,
+                    fromDate),
                 TableOperators.And,
-                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, rowKey));
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.LessThanOrEqual,
+                    toDate));
             tableQuery = tableQuery.Where(dateFilter);
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
-        }
-
-        private static string GetInsertionDatetimeFilter(AzureSettings azureSettings, string combinedFilter = "")
-        {
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.LessThanOrEqual, DateTimeOffset.UtcNow),
-                TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
-            if (string.IsNullOrWhiteSpace(combinedFilter))
-            {
-                return dateFilter;
-            }
-
-            return TableQuery.CombineFilters(dateFilter, TableOperators.And, combinedFilter);
         }
     }
 }

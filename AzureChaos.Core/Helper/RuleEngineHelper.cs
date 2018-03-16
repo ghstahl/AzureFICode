@@ -2,6 +2,7 @@
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -22,10 +23,10 @@ namespace AzureChaos.Core.Helper
 
             return new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[virtualMachineGroup.ToString()],
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
-                SchedulerSessionId = sessionId
+                TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
+                SchedulerSessionId = sessionId,
+                Rollbacked = false
             };
         }
 
@@ -38,19 +39,19 @@ namespace AzureChaos.Core.Helper
             string combinationKey;
             if (domainFlage)
             {
-                combinationKey = entity.AvailableSetId + "!" + entity.FaultDomain.ToString();
+                combinationKey = entity.AvailabilitySetId + Delimeters.Exclamatory + entity.FaultDomain?.ToString();
             }
             else
             {
-                combinationKey = entity.AvailableSetId + "@" + entity.UpdateDomain.ToString();
+                combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[VirtualMachineGroup.AvailabilitySets.ToString()],
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
+                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
-                CombinationKey = combinationKey
+                CombinationKey = combinationKey,
+                Rollbacked = false
             };
         }
 
@@ -63,44 +64,46 @@ namespace AzureChaos.Core.Helper
 
             return new ScheduledRules(VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[VirtualMachineGroup.AvailabilityZones.ToString()],
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
+                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
-                CombinationKey = entity.RegionName + "!" + entity.AvailabilityZone
+                CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,
+                Rollbacked = false
             };
         }
 
-        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action)
+        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action, string partitionKey, string rowKey)
         {
             InputObject triggerdata = new InputObject
             {
+                PartitionKey = partitionKey,
+                RowKey = rowKey,
                 Action = action,
-                ResourceName = crawlerResponse.ResourceName,
+                ResourceId = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,
-                ScalesetId = crawlerResponse.PartitionKey.Replace("!", "/")
+                VirtualMachineScaleSetId = crawlerResponse.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash)
             };
             return JsonConvert.SerializeObject(triggerdata);
         }
 
-        public static List<VirtualMachineGroup> GetEnabledChaosSet(IStorageAccountProvider storageAccountProvider, AzureClient azureClient)
+        public static List<VirtualMachineGroup> GetEnabledChaosSet(AzureSettings azureSettings)
         {
-            var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
-            var selectionQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
+            var enabledChaos = Mappings.GetEnabledChaos(azureSettings);
+
+            var selectionQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
+                DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.SchedulerFrequency));
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(selectionQuery);
-            var enabledChaos = Mappings.GetEnabledChaos(azureClient.AzureSettings);
-            var executedResults = storageAccountProvider.GetEntities(scheduledQuery, storageAccount, azureClient.AzureSettings.ScheduledRulesTable);
+            var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             if (executedResults == null)
             {
                 var chaos = enabledChaos.Where(x => x.Value);
-                return chaos?.Select(x => x.Key).ToList();
+                return chaos.Select(x => x.Key).ToList();
             }
 
             var scheduledRuleses = executedResults.ToList();
             var executedChaos = scheduledRuleses.Select(x => x.PartitionKey).Distinct().ToList();
             var excludedChaos = enabledChaos.Where(x => x.Value && !executedChaos.Contains(x.Key.ToString(), StringComparer.OrdinalIgnoreCase));
-            return excludedChaos?.Select(x => x.Key).ToList();
+            return excludedChaos.Select(x => x.Key).ToList();
         }
     }
 }

@@ -5,61 +5,50 @@ namespace AzureChaos.Core.Models.Configs
 {
     public class ChaosConfig
     {
-        [JsonProperty("microsoft.chaos.enabled")]
+        [JsonProperty("microsoft.faultinjection.enabled")]
         public bool ChaosEnabled { get; set; }
 
-        [JsonProperty("microsoft.chaos.leashed")]
-        public bool Leashed { get; set; }
+        [JsonProperty("microsoft.faultinjection.meantime")]
+        // Donot execute chaos on the resource in mean time more than the minimum time
+        public int MeanTime { get; set; }
 
-        [JsonProperty("microsoft.chaos.scheduler.frequency")]
+        [JsonProperty("microsoft.faultinjection.scheduler.frequency")]
         public int SchedulerFrequency { get; set; }
 
-        [JsonProperty("microsoft.chaos.trigger.frequency")]
+        [JsonProperty("microsoft.faultinjection.rollback.frequency")]
+        public int RollbackRunFrequency { get; set; }
+
+        [JsonProperty("microsoft.faultinjection.trigger.frequency")]
         public int TriggerFrequency { get; set; }
 
-        [JsonProperty("microsoft.chaos.crawler.frequency")]
+        [JsonProperty("microsoft.faultinjection.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 
-        [JsonProperty("microsoft.chaos.startTime")]
-        public string StartTime { get; set; }
-
-        [JsonProperty("microsoft.chaos.endTime")]
-        public string EndTime { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawlerRunFrequencyInMins")]
-        public string CrawlerRunFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.SchedulerRunFrequencyInMins")]
-        public string SchedulerRunFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.notification.global.enabled")]
+        [JsonProperty("microsoft.faultinjection.notification.global.enabled")]
         public bool NotificationEnabled { get; set; }
 
-        [JsonProperty("microsoft.chaos.notification.sourceEmail")]
+        [JsonProperty("microsoft.faultinjection.notification.sourceEmail")]
         public string SourceEmail { get; set; }
 
-        [JsonProperty("microsoft.chaos.notification.global.receiverEmail")]
+        [JsonProperty("microsoft.faultinjection.notification.global.receiverEmail")]
         public string ReceiverEmail { get; set; }
 
-        [JsonProperty("microsoft.chaos.blackListedResources")]
-        public List<string> BlackListedResources { get; set; }
+        [JsonProperty("microsoft.faultinjection.excludedResourceGroups")]
+        public List<string> ExcludedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.chaos.blackListedResourceGroups")]
-        public string BlackListedResourceGroups { get; set; }
+        [JsonProperty("microsoft.faultinjection.includedResourceGroups")]
+        public List<string> IncludedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.chaos.resourceGroups")]
-        public string ResourceGroups { get; set; }
-
-        [JsonProperty("microsoft.chaos.AS")]
+        [JsonProperty("microsoft.faultinjection.AvSets")]
         public AvailabilitySetChaosConfig AvailabilitySetChaos { get; set; }
 
-        [JsonProperty("microsoft.chaos.SS")]
+        [JsonProperty("microsoft.faultinjection.VmSS")]
         public ScaleSetChaosConfig ScaleSetChaos { get; set; }
 
-        [JsonProperty("microsoft.chaos.VM")]
+        [JsonProperty("microsoft.faultinjection.VM")]
         public VirtualMachineChaosConfig VirtualMachineChaos { get; set; }
 
-        [JsonProperty("microsoft.chaos.AZ")]
+        [JsonProperty("microsoft.faultinjection.AvZones")]
         public AvailabilityZoneChaosConfig AvailabilityZoneChaos { get; set; }
     }
 }

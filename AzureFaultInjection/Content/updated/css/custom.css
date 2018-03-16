@@ -1,0 +1,16 @@
+﻿
+.button-overlap {
+    display: inline-block;
+    position: relative;
+    outline: none;
+}
+
+label {
+    font-weight: normal!important;
+}
+h4{
+    font-weight:bold;
+}
+.multi-step-form{
+    margin-top:50px;
+}

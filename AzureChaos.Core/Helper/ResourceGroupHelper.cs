@@ -1,6 +1,6 @@
-﻿using AzureChaos.Core.Models.Configs;
-using Microsoft.Azure.Management.Fluent;
+﻿using AzureChaos.Core.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.WebJobs.Host;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,31 +9,29 @@ namespace AzureChaos.Core.Helper
 {
     public class ResourceGroupHelper
     {
-        public static List<IResourceGroup> GetResourceGroupsInSubscription(IAzure azure, AzureSettings azureSettings)
+        public static List<IResourceGroup> GetResourceGroupsInSubscription(TraceWriter log = null)
         {
-            var blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroups?.Split(',');
-            var specifiedResourceGroups = azureSettings.Chaos.ResourceGroups;
-
+            var azureClient = new AzureClient(log);
+            var azure = azureClient.AzureInstance;
+            List<string> blackListedResourceGroupList = azureClient.AzureSettings.Chaos.ExcludedResourceGroupList;
+            List<string> inclusiveOnlyResourceGroupList = azureClient.AzureSettings.Chaos.IncludedResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
-            if(blackListedResourceGroupList == null)
+            var resourceGroups = resourceGroupList.ToList();
+            if (resourceGroups?.Count <= 0)
             {
-                return resourceGroupList.ToList();
+                return null;
             }
 
-            var resourceGroups = resourceGroupList.Where(x => blackListedResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
-            if (string.IsNullOrWhiteSpace(specifiedResourceGroups))
+            if (inclusiveOnlyResourceGroupList?.Count > 0)
             {
-                return resourceGroups.ToList();
+                return resourceGroups.Where(x => inclusiveOnlyResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
             }
 
-            var includedResourceGroups = specifiedResourceGroups.Split(',');
-            if (includedResourceGroups != null && includedResourceGroups[0].Equals("all", StringComparison.OrdinalIgnoreCase))
-            {
-                return resourceGroups.ToList();
-            }
-
-            resourceGroups = resourceGroups.Where(x => includedResourceGroups.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
-            return resourceGroups.ToList();
+            return blackListedResourceGroupList?.Count > 0
+                ? resourceGroups.Where(x => !blackListedResourceGroupList.Contains(x.Name,
+                        StringComparer.OrdinalIgnoreCase))
+                    .ToList()
+                : resourceGroups.ToList();
         }
     }
 }

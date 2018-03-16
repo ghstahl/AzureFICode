@@ -9,27 +9,21 @@ namespace AzureChaos.Core.Models
         public ActionType Action { get; set; }
 
         /// <summary>Get or sets  the resource name.</summary>
-        public string ResourceName { get; set; }
+        public string ResourceId { get; set; }
 
         /// <summary>Get or sets  the resource group.</summary>
         public string ResourceGroup { get; set; }
 
+        /// <summary>Get or sets  the partition key.</summary>
+        public string PartitionKey { get; set; }
+
+        /// <summary>Get or sets  the resource key.</summary>
+        public string RowKey { get; set; }
+
         /// <summary>Get or sets  the resource group.</summary>
-        public string ScalesetId { get; set; }
+        public string VirtualMachineScaleSetId { get; set; }
 
-        /// <summary>AvailibilitySet Name to be passed</summary>
-        public string AvailibilitySet { get; set; }
-
-        /// <summary>Fault Domain Number in AvailibilitySet  to be passed</summary>
-        public bool FaultDomain { get; set; }
-
-        /// <summary>Update Domain Number in AvailibilitySet  to be passed</summary>
-        public bool UpdateDomain { get; set; }
-
-        /// <summary>Percntage of VMs to be under Action</summary>
-        public int VmPercentage { get; set; }
-
-        /// <summary>Resource Type for which Rule Engine is Triggered</summary>
-        public string ResourceType { get; set; }
+        /// <summary>Get or sets  the roolback.</summary>
+        public bool Rollbacked { get; set; }
     }
 }

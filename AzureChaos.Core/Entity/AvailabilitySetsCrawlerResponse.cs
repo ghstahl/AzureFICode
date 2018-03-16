@@ -2,12 +2,13 @@
 
 namespace AzureChaos.Core.Entity
 {
-    public class AvailabilitySetsCrawlerResponseEntity : CrawlerResponse
+    //Todo Declare the default values if possible
+    public class AvailabilitySetsCrawlerResponse : CrawlerResponse
     {
-        public AvailabilitySetsCrawlerResponseEntity()
+        public AvailabilitySetsCrawlerResponse()
         { }
 
-        public AvailabilitySetsCrawlerResponseEntity(string partitionKey, string rowKey)
+        public AvailabilitySetsCrawlerResponse(string partitionKey, string rowKey)
         {
             PartitionKey = partitionKey;
             RowKey = rowKey;
@@ -15,8 +16,7 @@ namespace AzureChaos.Core.Entity
 
         [Required] public string Key { get; set; }
 
-        /// <summary>Triggered Event </summary>
-        public string Virtualmachines { get; set; }
+        public bool HasVirtualMachines { get; set; }
 
         [Required] public int FaultDomainCount { get; set; }
 

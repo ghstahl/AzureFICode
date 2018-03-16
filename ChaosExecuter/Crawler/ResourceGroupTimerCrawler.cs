@@ -1,37 +1,54 @@
 using AzureChaos.Core.Entity;
-using AzureChaos.Core.Models;
+using AzureChaos.Core.Constants;
+using AzureChaos.Core.Helper;
 using AzureChaos.Core.Providers;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace ChaosExecuter.Crawler
 {
     public static class ResourceGroupTimerCrawler
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-
         [FunctionName("timercrawlerresourcegroups")]
-        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.UtcNow}");
-            var batchOperation = new TableBatchOperation();
-            var azureSettings = AzureClient.AzureSettings;
             try
             {
-                var resourceGroups = AzureClient.AzureInstance.ResourceGroups.List();
-                foreach (var resourceGroup in resourceGroups)
+                var resourceGroups = ResourceGroupHelper.GetResourceGroupsInSubscription();
+                //Todo make it as Sync
+                await InsertOrReplaceResourceGroupsAsync(resourceGroups, log); //Can we make it as task.run ??
+            }
+            catch (Exception ex)
+            {
+                log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
+            }
+        }
+
+        private static async Task InsertOrReplaceResourceGroupsAsync(List<IResourceGroup> resourceGroups, TraceWriter log)
+        {
+            var tableBatchOperation = new TableBatchOperation();
+            // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+            for (var i = 0; i < resourceGroups.Count; i += TableConstants.TableServiceBatchMaximumOperations)
+            {
+                var batchItems = resourceGroups.Skip(i)
+                    .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                foreach (var eachResourceGroup in batchItems)
                 {
-                    var resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponse("crawlrg", resourceGroup.Id.Replace("/", "-"));
+                    var resourceGroupCrawlerResponseEntity =
+                        new ResourceGroupCrawlerResponse("", eachResourceGroup.Name);
                     try
                     {
-                        resourceGroupCrawlerResponseEntity.EntryInsertionTime = DateTime.UtcNow;
-                        resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
-                        resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
-                        resourceGroupCrawlerResponseEntity.ResourceGroupName = resourceGroup.Name;
-                        batchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
+                        resourceGroupCrawlerResponseEntity.Id = eachResourceGroup.Id;
+                        resourceGroupCrawlerResponseEntity.RegionName = eachResourceGroup.RegionName;
+                        tableBatchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
                     }
                     catch (Exception ex)
                     {
@@ -40,16 +57,18 @@ namespace ChaosExecuter.Crawler
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
-            }
 
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-            if (batchOperation.Count > 0)
+            if (tableBatchOperation.Count > 0)
             {
-                var table = await StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ResourceGroupCrawlerTableName);
-                await table.ExecuteBatchAsync(batchOperation);
+                try
+                {
+                    var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ResourceGroupCrawlerTableName);
+                    await table.ExecuteBatchAsync(tableBatchOperation);
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
+                }
             }
         }
     }
