@@ -40,26 +40,26 @@ namespace AzureChaos.Core.Models
 
         [JsonProperty("meanTime")] public int MeanTime { get; set; }
 
-        [JsonProperty("isAvZoneEnabled")] public bool IsAvZonesEnabled { get; set; }
+        [JsonProperty("isAvZoneEnabled")] public bool IsAvZoneEnabled { get; set; }
 
         [JsonProperty("avZoneRegions")] public List<string> AvZoneRegions { get; set; }
 
         [JsonProperty("isVmEnabled")] public bool IsVmEnabled { get; set; }
 
         [JsonProperty("vmPercentage")]
-        public decimal VmTerminationPercentage { get; set; }
+        public decimal VmPercentage { get; set; }
 
         [JsonProperty("isVmssEnabled")] public bool IsVmssEnabled { get; set; }
 
         [JsonProperty("vmssPercentage")]
-        public decimal VmssTerminationPercentage { get; set; }
+        public decimal VmssPercentage { get; set; }
 
         [JsonProperty("isAvSetEnabled")] public bool IsAvSetEnabled { get; set; }
 
         [JsonProperty("isFaultDomainEnabled")]
-        public bool IsAvSetsFaultDomainEnabled { get; set; }
+        public bool IsFaultDomainEnabled { get; set; }
 
         [JsonProperty("isUpdateDomainEnabled")]
-        public bool IsAvSetsUpdateDomainEnabled { get; set; }
+        public bool IsUpdateDomainEnabled { get; set; }
     }
 }

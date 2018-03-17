@@ -54,7 +54,7 @@ namespace AzureChaos.Core.Constants
         public const string AvZoneRegions = "microsoft.faultinjection.AvZones.regions";
         public const string VmObject = "microsoft.faultinjection.VM";
         public const string VmEnabled = "microsoft.faultinjection.VM.enabled";
-        public const string VmTerminationPercentage = "microsoft.faultinjection.singleInstanceVm.percentageTermination";
+        public const string VmTerminationPercentage = "microsoft.faultinjection.VM.percentageTermination";
         public const string VmssObject = "microsoft.faultinjection.VmSS";
         public const string VmssEnabled = "microsoft.faultinjection.VmSS.enabled";
         public const string VmssTerminationPercentage = "microsoft.faultinjection.VmSS.percentageTermination";

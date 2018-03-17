@@ -1,10 +1,12 @@
 ﻿using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Models.Configs;
+using AzureFaultInjection.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Models;
 using Microsoft.Azure.Management.Storage.Fluent;
+using Microsoft.Rest.Azure;
 using Microsoft.Rest.TransientFaultHandling;
 using Microsoft.WindowsAzure.Storage;
 using System;
@@ -20,6 +22,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
+using System.Xml;
 
 namespace AzureFaultInjection.Controllers
 {
@@ -27,11 +30,11 @@ namespace AzureFaultInjection.Controllers
     {
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
         private const string CommonName = "AzureFaultInjection";
-        private const string StorageConnectionString = "StorageConnectionString";
+        private const string StorageConnectionString = "ConfigStorageConnectionString";
 
         // GET: api/Api
         [ActionName("getsubscriptions")]
-        public async Task<IEnumerable<SubscriptionInner>> GetSubscriptions(string tenantId, string clientId, string clientSecret)
+        public async Task<FaultInjectionResponseModel<DisplayConfigResponseModel>> GetSubscriptions(string tenantId, string clientId, string clientSecret)
         {
             if (string.IsNullOrWhiteSpace(clientId) ||
                 string.IsNullOrWhiteSpace(clientSecret) ||
@@ -44,15 +47,44 @@ namespace AzureFaultInjection.Controllers
                 clientSecret,
                 tenantId);
 
-            var subscriptionTask = await subscriptionClient.Subscriptions.ListAsync();
+            IPage<SubscriptionInner> subscriptionTask = null;
+            try
+            {
+                subscriptionTask = await subscriptionClient.Subscriptions.ListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new FaultInjectionResponseModel<DisplayConfigResponseModel>() { ErrorMessage = ex.Message, Success = false };
+            }
+
             var subscriptionList = subscriptionTask?.Select(x => x);
 
+            // Read the existing config from storage account
+            string storageConnection = ConfigurationManager.AppSettings[StorageConnectionString];
+
+            var model = new DisplayConfigResponseModel()
+            {
+                SubcriptionList = subscriptionList
+            };
+            if (!string.IsNullOrWhiteSpace(storageConnection))
+            {
+                var settings = AzureClient.GetAzureSettings(storageConnection);
+                if (settings != null)
+                {
+                    model.Config = ConvertAzureSettingsConfigModel(settings);
+                }
+
+                model.ResourceGroups = await GetResourceGroups(settings.Client.TenantId, settings.Client.ClientId,
+                    settings.Client.ClientSecret, settings.Client.SubscriptionId);
+            }
+
             //return response;
-            return subscriptionList;
+            return new FaultInjectionResponseModel<DisplayConfigResponseModel>() { Result = model, Success = true };
         }
 
         [ActionName("getresourcegroups")]
-        public async Task<IEnumerable<ResourceGroupInner>> GetResourceGroups(string tenantId, string clientId, string clientSecret, string subscription)
+        public async Task<IEnumerable<ResourceGroupInner>> GetResourceGroups(string tenantId, string clientId, string clientSecret,
+            string subscription)
         {
             if (string.IsNullOrWhiteSpace(clientId) ||
                 string.IsNullOrWhiteSpace(clientSecret) ||
@@ -176,17 +208,6 @@ namespace AzureFaultInjection.Controllers
             }
         }
 
-        private static ConfigModel GetAzureSettings()
-        {
-            var connectionString = ConfigurationManager.AppSettings[StorageConnectionString];
-            var azureSettings = AzureClient.GetAzureSettings(connectionString);
-            if (azureSettings != null)
-            {
-                return ConvertAzureSettingsConfigModel(azureSettings);
-            }
-
-            return null;
-        }
         private static ConfigModel ConvertAzureSettingsConfigModel(AzureSettings settings)
         {
             var model = new ConfigModel
@@ -201,17 +222,17 @@ namespace AzureFaultInjection.Controllers
                 IncludedResourceGroups = settings.Chaos.IncludedResourceGroupList,
 
                 AvZoneRegions = settings.Chaos.AvailabilityZoneChaos.Regions,
-                IsAvZonesEnabled = settings.Chaos.AvailabilityZoneChaos.Enabled,
+                IsAvZoneEnabled = settings.Chaos.AvailabilityZoneChaos.Enabled,
 
                 IsAvSetEnabled = settings.Chaos.AvailabilitySetChaos.Enabled,
-                IsAvSetsFaultDomainEnabled = settings.Chaos.AvailabilitySetChaos.FaultDomainEnabled,
-                IsAvSetsUpdateDomainEnabled = settings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled,
+                IsFaultDomainEnabled = settings.Chaos.AvailabilitySetChaos.FaultDomainEnabled,
+                IsUpdateDomainEnabled = settings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled,
 
-                VmssTerminationPercentage = settings.Chaos.ScaleSetChaos.PercentageTermination,
+                VmssPercentage = settings.Chaos.ScaleSetChaos.PercentageTermination,
                 IsVmssEnabled = settings.Chaos.ScaleSetChaos.Enabled,
 
                 IsVmEnabled = settings.Chaos.VirtualMachineChaos.Enabled,
-                VmTerminationPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination
+                VmPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination
             };
             return model;
         }
@@ -228,21 +249,62 @@ namespace AzureFaultInjection.Controllers
             return hash.ToString().Substring(0, 24);
         }
 
+        private static void InsertNewAppsettingsKey(string key, string value)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.Load(HttpContext.Current.Server.MapPath(@"~/Web.config"));
+
+
+            // This should find the appSettings node (should be only one):
+            XmlNode nodeAppSettings = doc.SelectSingleNode("//appSettings");
+
+
+            // Create new <add> node
+            XmlNode nodeNewKey = doc.CreateElement("add");
+
+
+            // Create new attribute for key=""
+            XmlAttribute attributeKey = doc.CreateAttribute("key");
+            // Create new attribute for value=""
+            XmlAttribute attributeValue = doc.CreateAttribute("value");
+
+
+            // Assign values to both - the key and the value attributes:
+
+
+            attributeKey.Value = key;
+            attributeValue.Value = value;
+
+
+            // Add both attributes to the newly created node:
+            nodeNewKey.Attributes.Append(attributeKey);
+            nodeNewKey.Attributes.Append(attributeValue);
+
+            // Add the node under the 
+            nodeAppSettings.AppendChild(nodeNewKey);
+            doc.Save(HttpContext.Current.Server.MapPath(@"~/Web.config"));
+        }
+
         private static bool AddAppsettings(string keyName, string value)
         {
             try
             {
-                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var config =
+                System.Web.Configuration.WebConfigurationManager.OpenWebConfiguration(null);
+                //var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 if (ConfigurationManager.AppSettings.AllKeys.Contains(keyName))
                 {
-                    config.AppSettings.Settings[keyName].Value = value;
+                    ConfigurationManager.AppSettings[keyName] = value;
                 }
                 else
                 {
-                    config.AppSettings.Settings.Add(keyName, value);
+                    // config.AppSettings.Settings.Add(keyName, value);
+                    InsertNewAppsettingsKey(keyName, value);
                 }
-                config.Save(ConfigurationSaveMode.Modified);
-                ConfigurationManager.RefreshSection("appSettings");
+
+                //config.Save(ConfigurationSaveMode.Modified);
+
+                //ConfigurationManager.RefreshSection("appSettings");
                 return true;
             }
             catch (Exception ex)

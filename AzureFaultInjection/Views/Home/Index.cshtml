@@ -1,22 +1,21 @@
 ﻿<section class="multi-step-form">
 
-  <h1>Azure Fault Injection</h1>
-
-  <!--<div class="steps">
-    <button class="active" type="button" disabled>Authenticate</button> |
-    <button type="button" disabled>Resource Selection</button> |
-    <button type="button" disabled>Vm Settings</button>
-  </div>-->
+  <div class="steps">
+    <button class="active tab-header" type="button" disabled>Authenticate</button> |
+    <button class="tab-header" type="button" disabled>Resource Selection</button> |
+    <button class="tab-header" type="button" disabled>Config Settings</button> |
+    <button class="tab-header" type="button" disabled>Frequency Settings</button>
+  </div>
 
   <form action="#" method="post" id="multiwizard">
 
     <fieldset aria-label="Step One" tabindex="-1" id="step-1">
-      <h4>Authenticate</h4>
+      <h4></h4>
       <p>
         <label for="tenant-id">Tenant Id</label>
         @*<div class="input-group">*@
-          <input class="form-control" type="text" name="tenantId" id="tenant-id" required>
-          @*<button type="button" class="btn btn-secondary" data-container="tenant-id" data-toggle="popover" data-placement="top" data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus.">
+        <input class="form-control" type="text" name="tenantId" id="tenant-id" required>
+        @*<button type="button" class="btn btn-secondary" data-container="tenant-id" data-toggle="popover" data-placement="top" data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus.">
             Popover on top
           </button>*@
         @*</div>*@

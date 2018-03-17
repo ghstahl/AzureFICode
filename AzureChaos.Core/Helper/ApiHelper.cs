@@ -152,7 +152,7 @@ namespace AzureChaos.Core.Helper
                 writer.WritePropertyName(Mappings.VmEnabled);
                 writer.WriteValue(queryParams.IsVmEnabled);
                 writer.WritePropertyName(Mappings.VmTerminationPercentage);
-                writer.WriteValue(queryParams.VmTerminationPercentage);
+                writer.WriteValue(queryParams.VmPercentage);
                 writer.WriteEndObject();
 
                 writer.WritePropertyName(Mappings.VmssObject);
@@ -160,7 +160,7 @@ namespace AzureChaos.Core.Helper
                 writer.WritePropertyName(Mappings.VmssEnabled);
                 writer.WriteValue(queryParams.IsVmssEnabled);
                 writer.WritePropertyName(Mappings.VmssTerminationPercentage);
-                writer.WriteValue(queryParams.VmssTerminationPercentage);
+                writer.WriteValue(queryParams.VmssPercentage);
                 writer.WriteEndObject();
 
                 writer.WritePropertyName(Mappings.AvSetObject);
@@ -168,15 +168,15 @@ namespace AzureChaos.Core.Helper
                 writer.WritePropertyName(Mappings.AvSetEnabled);
                 writer.WriteValue(queryParams.IsAvSetEnabled);
                 writer.WritePropertyName(Mappings.AvSetFaultDomainEnabled);
-                writer.WriteValue(queryParams.IsAvSetsFaultDomainEnabled);
+                writer.WriteValue(queryParams.IsFaultDomainEnabled);
                 writer.WritePropertyName(Mappings.AvSetUpdateDomainEnabled);
-                writer.WriteValue(queryParams.IsAvSetsUpdateDomainEnabled);
+                writer.WriteValue(queryParams.IsUpdateDomainEnabled);
                 writer.WriteEndObject();
 
                 writer.WritePropertyName(Mappings.AvZoneObject);
                 writer.WriteStartObject();
                 writer.WritePropertyName(Mappings.AvZoneEnabled);
-                writer.WriteValue(queryParams.IsAvZonesEnabled);
+                writer.WriteValue(queryParams.IsAvZoneEnabled);
 
                 writer.WritePropertyName(Mappings.AvZoneRegions);
                 writer.WriteStartArray();

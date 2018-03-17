@@ -1,8 +1,4 @@
-﻿
-$(function () {
-  $('[data-toggle="popover"]').popover()
-})
-app.$nextButton.on("click", function (e) {
+﻿app.$nextButton.on("click", function (e) {
   var $this = $(this),
     currentParent = $(this).closest("fieldset"),
     prevParent = currentParent.prev();
@@ -29,7 +25,7 @@ $("#submit").on("click", function (e) {
     if (field.name === 'isFaultOrUpdateDomainEnabled') {
       var faultDomain = $("#isFaultDomainEnabled")[0].checked;
       var updateDomain = $("#isUpdateDomainEnabled")[0].checked;
-      if (faultDomain) {  
+      if (faultDomain) {
         values["isFaultDomainEnabled"] = faultDomain;
       }
       if (updateDomain) {
@@ -69,9 +65,9 @@ $("#submit").on("click", function (e) {
 });
 
 $("#selectSubscription").change(function () {
-    var subscription = this.value;
-    getResourceGroups(subscription);
-  });
+  var subscription = this.value;
+  getResourceGroups(subscription);
+});
 $("#excluded-resource-groups").change(function (e) {
   hideResourceGroups("#included-resource-groups", $(this).val());
 });
@@ -108,15 +104,27 @@ function getSubscriptions(currentStepObj) {
     type: "GET",
     data: { tenantId: tenantId, clientId: clientId, clientSecret: clientSecret }
   });
-  request.done(function (result) {
-    if (!result) {
+  request.done(function (response) {
+    if (!response || response.Success === false || !response.Result) {
       console.log("subscription list is empty");
+      if (response.ErrorMessage) {
+        alert(response.ErrorMessage);
+      }
+
       return;
     }
 
-    bindOptions($('#selectSubscription'), result);
+    var result = response.Result;
+    bindOptions($('#selectSubscription'), result.SubcriptionList);
     $('#selectSubscription').SumoSelect();
-    getResourceGroups(result[0].id);
+
+    if (result.Config) {
+      $("#selectSubscription")[0].sumo.selectItem(result.Config.subscription);
+      bindExistingConfig(result.Config, result.ResourceGroups)
+    }
+    else {
+      getResourceGroups(result[0].id);
+    }
   });
 
   request.fail(function (jqXHR, textStatus) {
@@ -150,6 +158,44 @@ function getResourceGroups(subscription) {
     alert("Request failed: " + textStatus);
   });
 }
+
+function bindExistingConfig(model, resourceGroups) {
+  if (resourceGroups) {
+    bindOptions($('#excluded-resource-groups'), resourceGroups);
+    bindOptions($('#included-resource-groups'), resourceGroups);
+    $('#excluded-resource-groups').SumoSelect({ selectAll: true });
+    $('#included-resource-groups').SumoSelect({ selectAll: true });
+  }
+
+  if (model) {
+    selectItem(model.SubcriptionList, '#selectSubscription');
+    selectItem(model.excludedResourceGroups, '#excluded-resource-groups');
+    selectItem(model.includedResourceGroups, '#included-resource-groups');
+    $("#vm-percentage")[0].value = model.vmPercentage;
+    $("#vm-enabled")[0].checked = model.isVmEnabled;
+    $("#avset-enabled")[0].checked = model.isAvSetEnabled;
+    $("#isFaultDomainEnabled")[0].checked = model.isFaultDomainEnabled;
+    $("#isUpdateDomainEnabled")[0].checked = model.isUpdateDomainEnabled;
+    $("#avzone-enabled")[0].checked = model.isAvZoneEnabled;
+    $("#vmss-percentage")[0].value = model.vmssPercentage;
+    $("#vmss-enabled")[0].checked = model.isVmssEnabled;
+    $("#scheduler-frequency")[0].value = model.schedulerFrequency;
+    $("#rollback-frequency")[0].value = model.rollbackFrequency;
+    $("#trigger-frequency")[0].value = model.triggerFrequency;
+    $("#crawler-frequency")[0].value = model.crawlerFrequency;
+    $("#mean-time")[0].value = model.meanTime;
+    $("#chaos-enabled")[0].checked = model.isChaosEnabled;
+  }
+}
+
+function selectItem(needsToBeSelected, selector) {
+  if (selector) {
+    $.each(needsToBeSelected, function (index, value) {
+      $(selector)[0].sumo.selectItem(value);
+    });
+  }
+}
+
 
 function bindOptions($element, result) {
   $element.empty();
