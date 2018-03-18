@@ -123,7 +123,7 @@ function getSubscriptions(currentStepObj) {
       bindExistingConfig(result.Config, result.ResourceGroups)
     }
     else {
-      getResourceGroups(result[0].id);
+      getResourceGroups(result.SubcriptionList[0].id);
     }
   });
 

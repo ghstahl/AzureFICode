@@ -68,14 +68,21 @@ namespace AzureFaultInjection.Controllers
             };
             if (!string.IsNullOrWhiteSpace(storageConnection))
             {
-                var settings = AzureClient.GetAzureSettings(storageConnection);
-                if (settings != null)
+                try
                 {
-                    model.Config = ConvertAzureSettingsConfigModel(settings);
-                }
+                    var settings = AzureClient.GetAzureSettings(storageConnection);
+                    if (settings != null)
+                    {
+                        model.Config = ConvertAzureSettingsConfigModel(settings);
+                    }
 
-                model.ResourceGroups = await GetResourceGroups(settings.Client.TenantId, settings.Client.ClientId,
-                    settings.Client.ClientSecret, settings.Client.SubscriptionId);
+                    model.ResourceGroups = await GetResourceGroups(settings.Client.TenantId, settings.Client.ClientId,
+                        settings.Client.ClientSecret, settings.Client.SubscriptionId);
+                }
+                catch(Exception ex)
+                {
+                    // dont throw exception here, 1st time user does not have the settings data.
+                }
             }
 
             //return response;
