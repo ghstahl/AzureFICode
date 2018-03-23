@@ -8,6 +8,8 @@ namespace AzureFaultInjection.Models
     {
         public bool Success { get; set; }
 
+        public string SuccessMessage { get; set; }
+
         public T Result { get; set; }
 
         public string ErrorMessage { get; set; }

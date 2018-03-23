@@ -67,13 +67,16 @@ $("#submit").on("click", function (e) {
       $(".modal").hide();
     }
   });
-  request.done(function (result) {
-    if (!result) {
-      console.log("subscription list is empty");
+  request.done(function (response) {
+    if (response || response.Success || response.SuccessMessage) {
+      alert(response.SuccessMessage);
       return;
     }
+    else if (response && response.ErrorMessage) {
+      alert(response.ErrorMessage);
+    }
     else {
-      alert("Deployment completed successfully");
+      alert("Something went wrong, please try again later!");
     }
   });
 

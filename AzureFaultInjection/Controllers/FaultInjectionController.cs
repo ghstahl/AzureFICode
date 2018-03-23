@@ -135,7 +135,7 @@ namespace AzureFaultInjection.Controllers
         }
 
         [ActionName("createblob")]
-        public ConfigModel CreateBlob(ConfigModel model)
+        public FaultInjectionResponseModel<ConfigModel> CreateBlob(ConfigModel model)
         {
             if (model == null)
             {
@@ -207,12 +207,6 @@ namespace AzureFaultInjection.Controllers
                     blockBlob.UploadFromStream(ms);
                 }
 
-                //else
-                //{
-                //    var azureSettings = JsonConvert.DeserializeObject<AzureSettings>(data);
-                //    model = ConvertAzureSettingsConfigModel(azureSettings);
-                //}
-
                 var functionAppName =
                     GetUniqueHash(model.ClientId + model.TenantId + model.Subscription + CommonName);
 
@@ -220,14 +214,15 @@ namespace AzureFaultInjection.Controllers
                     azure.AppServices.FunctionApps.ListByResourceGroup(resourceGroupName);
 
                 // try to give the read and write permissions
-                if (azureFunctions != null && azureFunctions.Count() > 0) return model;
+                if (azureFunctions != null && azureFunctions.Count() > 0)
+                    return new FaultInjectionResponseModel<ConfigModel>() { Success = true, SuccessMessage = "Configuration updated successfully", Result = model }; ;
                 if (!DeployAzureFunctions(model, functionAppName, storageConnection, resourceGroupName))
                 {
                     throw new HttpRequestWithStatusException("Azure Functions are not deployed",
                         new HttpResponseException(HttpStatusCode.InternalServerError));
                 }
 
-                return model;
+                return new FaultInjectionResponseModel<ConfigModel>() { Success = true, SuccessMessage = "Deployment Completed Successfully", Result = model };
             }
             catch (Exception e)
             {
@@ -415,7 +410,7 @@ namespace AzureFaultInjection.Controllers
                         Console.WriteLine("[PowerShell]: Error in cmdlet: " + er.Exception.Message);
                     }
                 }
-                if (results != null)
+                else
                 {
                     return true;
                 }
