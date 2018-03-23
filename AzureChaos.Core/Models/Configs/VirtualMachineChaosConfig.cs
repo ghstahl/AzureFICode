@@ -7,7 +7,7 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.faultinjection.VM.enabled")]
         public bool Enabled { get; set; }
 
-        [JsonProperty("microsoft.faultinjection.singleInstanceVm.percentageTermination")]
+        [JsonProperty("microsoft.faultinjection.VM.percentageTermination")]
         public decimal PercentageTermination { get; set; }
     }
 }

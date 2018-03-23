@@ -287,9 +287,10 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Controllers\ActivityController.cs" />
     <Compile Include="Controllers\FaultInjectionController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
-    <Compile Include="Controllers\ValuesController.cs" />
+    <Compile Include="Controllers\ScheduleController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -297,9 +298,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\images\azurelogo.png" />
+    <Content Include="Content\images\loader.gif" />
+    <Content Include="Content\updated\css\bootstrap.min.css" />
     <Content Include="Content\updated\css\custom.css" />
+    <Content Include="Content\updated\css\loader.css" />
     <Content Include="Content\updated\css\style.css" />
     <Content Include="Content\updated\css\sumoselect.css" />
+    <Content Include="Content\updated\css\tooltip.css" />
     <Content Include="favicon.ico" />
     <Content Include="fonts\glyphicons-halflings-regular.svg" />
     <Content Include="Global.asax" />
@@ -309,9 +315,15 @@
     <Content Include="Content\updated\scss\style.scss" />
     <None Include="Properties\PublishProfiles\AzureFaultInjection - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\AzureFaultInjectionTest - Web Deploy.pubxml" />
+    <Content Include="Scripts\js\bootstrap-datetimepicker.js" />
     <Content Include="Scripts\js\event-helper.js" />
     <Content Include="Scripts\js\index.js" />
+    <Content Include="Scripts\js\jquery-2.2.4.min.js" />
     <Content Include="Scripts\js\jquery.sumoselect.js" />
+    <Content Include="Scripts\js\jquery.validate.min.js" />
+    <Content Include="Scripts\js\moment.js" />
+    <Content Include="Scripts\js\reports.js" />
+    <Content Include="Scripts\js\tooltip.js" />
     <Content Include="Scripts\wizard\Tooltip.js" />
     <Content Include="Web.config" />
     <Content Include="Web.Debug.config">
@@ -327,6 +339,8 @@
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
+    <Content Include="Views\Schedule\Index.cshtml" />
+    <Content Include="Views\Activity\Index.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

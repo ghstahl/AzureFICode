@@ -14,6 +14,8 @@ namespace AzureChaos.Core.Entity
             RowKey = rowKey;
         }
 
+        // Keeping the resource name for reporting purpose
+        public string ResourceName { get; set; }
         public string TriggerData { get; set; }
         public string SchedulerSessionId { get; set; }
         public bool Rollbacked { get; set; }

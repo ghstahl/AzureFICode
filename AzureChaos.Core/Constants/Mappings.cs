@@ -48,7 +48,7 @@ namespace AzureChaos.Core.Constants
         public const string FaultInjectionEnable = "microsoft.faultinjection.enabled";
         public const string MeanTime = "microsoft.faultinjection.meantime";
         public const string ExcludedResourceGroups = "microsoft.faultinjection.excludedResourceGroups";
-        public const string IncludedResourceGroups = "microsoft.faultinjection.includedResourceGroups";
+        public const string AzureFaultInjectionActions = "microsoft.faultinjection.actions";
         public const string AvZoneObject = "microsoft.faultinjection.AvZones";
         public const string AvZoneEnabled = "microsoft.faultinjection.AvZones.enabled";
         public const string AvZoneRegions = "microsoft.faultinjection.AvZones.regions";

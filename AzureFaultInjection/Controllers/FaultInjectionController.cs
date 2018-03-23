@@ -1,7 +1,10 @@
-﻿using AzureChaos.Core.Helper;
+﻿using AzureChaos.Core.Constants;
+using AzureChaos.Core.Entity;
+using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Models.Configs;
 using AzureFaultInjection.Models;
+using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Models;
@@ -9,8 +12,10 @@ using Microsoft.Azure.Management.Storage.Fluent;
 using Microsoft.Rest.Azure;
 using Microsoft.Rest.TransientFaultHandling;
 using Microsoft.WindowsAzure.Storage;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.IO;
 using System.Linq;
@@ -31,6 +36,22 @@ namespace AzureFaultInjection.Controllers
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
         private const string CommonName = "AzureFaultInjection";
         private const string StorageConnectionString = "ConfigStorageConnectionString";
+
+        [ActionName("getschedules")]
+        public IEnumerable<Schedules> GetSchedules(string fromDate, string toDate)
+        {
+            var entities = GetSchedulesByDate(fromDate, toDate);
+            var result = entities.Select(ConvertToSchedule);
+            return result;
+        }
+
+        [ActionName("getactivities")]
+        public IEnumerable<Activities> GetActivities(string fromDate, string toDate)
+        {
+            var entities = GetSchedulesByDate(fromDate, toDate);
+            var result = entities.Select(ConvertToActivity);
+            return result;
+        }
 
         // GET: api/Api
         [ActionName("getsubscriptions")]
@@ -79,7 +100,7 @@ namespace AzureFaultInjection.Controllers
                     model.ResourceGroups = await GetResourceGroups(settings.Client.TenantId, settings.Client.ClientId,
                         settings.Client.ClientSecret, settings.Client.SubscriptionId);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     // dont throw exception here, 1st time user does not have the settings data.
                 }
@@ -215,6 +236,28 @@ namespace AzureFaultInjection.Controllers
             }
         }
 
+        private static string GetStorageConnectionString(string storageAccountName, string resourceGroup, IAzure azure)
+        {
+            if (string.IsNullOrWhiteSpace(storageAccountName))
+            {
+                throw new ArgumentNullException("strorageAccountName", "Storage name is empty");
+            }
+
+            var storageAccounts = azure.StorageAccounts.ListByResourceGroup(resourceGroup);
+            if (storageAccounts == null || !storageAccounts.Any())
+            {
+                throw new ItemNotFoundException("Storage account not found");
+            }
+
+            var account = storageAccounts.FirstOrDefault(x => x.Name.Equals(storageAccountName, StringComparison.OrdinalIgnoreCase));
+            if (account == null || string.IsNullOrWhiteSpace(account.Key))
+            {
+                throw new ItemNotFoundException("Storage account not found");
+            }
+
+            return string.Format(StorageConStringFormat, storageAccountName, account.Key);
+        }
+
         private static ConfigModel ConvertAzureSettingsConfigModel(AzureSettings settings)
         {
             var model = new ConfigModel
@@ -226,7 +269,7 @@ namespace AzureFaultInjection.Controllers
                 IsChaosEnabled = settings.Chaos.ChaosEnabled,
 
                 ExcludedResourceGroups = settings.Chaos.ExcludedResourceGroupList,
-                IncludedResourceGroups = settings.Chaos.IncludedResourceGroupList,
+                AzureFiActions = settings.Chaos.AzureFaultInjectionActions,
 
                 AvZoneRegions = settings.Chaos.AvailabilityZoneChaos.Regions,
                 IsAvZoneEnabled = settings.Chaos.AvailabilityZoneChaos.Enabled,
@@ -239,8 +282,14 @@ namespace AzureFaultInjection.Controllers
                 IsVmssEnabled = settings.Chaos.ScaleSetChaos.Enabled,
 
                 IsVmEnabled = settings.Chaos.VirtualMachineChaos.Enabled,
-                VmPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination
+                VmPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination,
+
+                CrawlerFrequency = settings.Chaos.CrawlerFrequency,
+                SchedulerFrequency = settings.Chaos.SchedulerFrequency,
+                RollbackFrequency = settings.Chaos.RollbackRunFrequency,
+                MeanTime = settings.Chaos.MeanTime
             };
+
             return model;
         }
         private static string GetUniqueHash(string input)
@@ -357,7 +406,15 @@ namespace AzureFaultInjection.Controllers
 
                 // Execute PowerShell script
                 var results = pipeline.Invoke();
+                var error = pipeline.Error.Read() as Collection<ErrorRecord>;// Streams property is not available
 
+                if (error != null)
+                {
+                    foreach (ErrorRecord er in error)
+                    {
+                        Console.WriteLine("[PowerShell]: Error in cmdlet: " + er.Exception.Message);
+                    }
+                }
                 if (results != null)
                 {
                     return true;
@@ -388,25 +445,53 @@ namespace AzureFaultInjection.Controllers
             ms.Position = 0;
         }
 
-        // GET: api/Api/5
-        public string Get(int id)
+        private static Schedules ConvertToSchedule(ScheduledRules scheduledRule)
         {
-            return "value";
+            var triggerData = JsonConvert.DeserializeObject<InputObject>(scheduledRule.TriggerData);
+
+            return new Schedules()
+            {
+                ResourceName = triggerData.ResourceId,
+                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
+                ChaosOperation = triggerData.Action.ToString(),
+                IsRollbacked = scheduledRule.Rollbacked,
+                Status = scheduledRule.ExecutionStatus
+            };
         }
 
-        // POST: api/Api
-        public void Post([FromBody]string value)
+        private static Activities ConvertToActivity(ScheduledRules scheduledRule)
         {
+            return new Activities()
+            {
+                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
+                ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
+                ChaosOperation = scheduledRule.ChaosAction,
+                InitialState = scheduledRule.InitialState,
+                FinalState = scheduledRule.FinalState,
+                Status = scheduledRule.ExecutionStatus,
+                Error = scheduledRule.Error,
+                Warning = scheduledRule.Warning
+            };
         }
 
-        // PUT: api/Api/5
-        public void Put(int id, [FromBody]string value)
+        private static IEnumerable<ScheduledRules> GetSchedulesByDate(string fromDate, string toDate)
         {
-        }
+            if (!DateTimeOffset.TryParse(fromDate, out var fromDateTimeOffset))
+            {
+                fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
+            }
 
-        // DELETE: api/Api/5
-        public void Delete(int id)
-        {
+            if (!DateTimeOffset.TryParse(toDate, out var toDateTimeOffset))
+            {
+                toDateTimeOffset = DateTimeOffset.UtcNow;
+            }
+
+            return ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset,
+                toDateTimeOffset,
+                "ScheduledExecutionTime",
+                StorageTableNames.ScheduledRulesTableName);
         }
     }
 }

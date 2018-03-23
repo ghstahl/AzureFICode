@@ -109,10 +109,10 @@ namespace AzureChaos.Core.Helper
                 writer.WriteEndObject();
 
                 // fault injection config properties
-                writer.WritePropertyName(Mappings.FaultInjectionEnable);
-                writer.WriteValue(queryParams.IsChaosEnabled);
                 writer.WritePropertyName(Mappings.FaultInjectionObject);
                 writer.WriteStartObject();
+                writer.WritePropertyName(Mappings.FaultInjectionEnable);
+                writer.WriteValue(queryParams.IsChaosEnabled);
                 writer.WritePropertyName(Mappings.SchedulerFrequency);
                 writer.WriteValue(queryParams.SchedulerFrequency);
                 writer.WritePropertyName(Mappings.TriggerFrequency);
@@ -123,13 +123,13 @@ namespace AzureChaos.Core.Helper
                 writer.WriteValue(queryParams.RollbackFrequency);
                 writer.WritePropertyName(Mappings.MeanTime);
                 writer.WriteValue(queryParams.MeanTime);
-                writer.WritePropertyName(Mappings.IncludedResourceGroups);
+                writer.WritePropertyName(Mappings.AzureFaultInjectionActions);
                 writer.WriteStartArray();
-                if (queryParams.IncludedResourceGroups != null)
+                if (queryParams.AzureFiActions != null)
                 {
-                    foreach (var includedResourceGroup in queryParams.IncludedResourceGroups)
+                    foreach (var azureFiAction in queryParams.AzureFiActions)
                     {
-                        writer.WriteValue(includedResourceGroup);
+                        writer.WriteValue(azureFiAction);
                     }
                 }
 

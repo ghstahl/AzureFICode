@@ -24,6 +24,7 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
+                ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
                 Rollbacked = false
@@ -48,6 +49,7 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
+                ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
                 CombinationKey = combinationKey,
@@ -65,6 +67,7 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
+                ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
                 CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,

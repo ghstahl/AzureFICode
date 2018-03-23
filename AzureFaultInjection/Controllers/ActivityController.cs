@@ -2,12 +2,11 @@
 
 namespace AzureFaultInjection.Controllers
 {
-    public class HomeController : Controller
+    public class ActivityController : Controller
     {
+        // GET: Activity
         public ActionResult Index()
         {
-            ViewBag.Title = "Home Page";
-
             return View();
         }
     }

@@ -36,8 +36,8 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.faultinjection.excludedResourceGroups")]
         public List<string> ExcludedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.faultinjection.includedResourceGroups")]
-        public List<string> IncludedResourceGroupList { get; set; }
+        [JsonProperty("microsoft.faultinjection.actions")]
+        public List<string> AzureFaultInjectionActions { get; set; }
 
         [JsonProperty("microsoft.faultinjection.AvSets")]
         public AvailabilitySetChaosConfig AvailabilitySetChaos { get; set; }

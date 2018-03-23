@@ -9,9 +9,10 @@ namespace AzureFaultInjection
         public static void RegisterBundles(BundleCollection bundles)
         {
             bundles.Add(new ScriptBundle("~/bundles/jquery").Include(
-                        "~/Scripts/jquery-{version}.js",
-            "~/Scripts/wizard/Tooltip.js"
-                // "~/Scripts/multiselect/jquery.sumoselect.js"
+                        "~/Scripts/js/jquery-2.2.4.min.js",
+                        "~/Scripts/js/jquery.validate.min.js",
+                        "~/Scripts/js/jquery.sumoselect.js",
+            "~/Scripts/js/tooltip.js"
                 ));
 
             // Use the development version of Modernizr to develop with and learn from. Then, when you're
@@ -20,14 +21,16 @@ namespace AzureFaultInjection
                         "~/Scripts/modernizr-*"));
 
             bundles.Add(new ScriptBundle("~/bundles/bootstrap").Include(
-                      "~/Scripts/bootstrap.js",
-                      "~/Scripts/respond.js"));
+                 "~/Scripts/js/moment.js",
+                      "~/Scripts/js/bootstrap-datetimepicker.js"));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
-                      "~/Content/bootstrap.css",
-                      "~/Content/site.css",
-                "~/Content/style.css",
-                "~/Content/wizard/bootstrap.css"));
+                      "~/Content/updated/css/bootstrap.min.css",
+                      "~/Content/updated/css/custom.css",
+                "~/Content/updated/css/style.css",
+                "~/Content/updated/css/sumoselect.css",
+                "~/Content/updated/css/tooltip.css",
+                "~/Content/updated/css/loader.css"));
         }
     }
 }

@@ -29,14 +29,24 @@
   background: none;
 }
 .multi-step-form .steps .active {
-  background: #eee;
+    background: #666;
 }
-
-body {
+.breadcrumb {
+    height: 37px;
+}
+.steps {
+    list-style: none;
+    width: 100%;
+    overflow: hidden;
+    margin-bottom: 20px;
+    /*margin: 0;*/
+    padding: 0;
+}
+/*body {
   padding: 1em;
   max-width: 35em;
   margin: 0 auto;
-}
+}*/
 
 .error {
   color: red;

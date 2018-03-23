@@ -26,7 +26,7 @@ namespace AzureChaos.Core.Models
 
         [JsonProperty("excludedResourceGroups")] public List<string> ExcludedResourceGroups { get; set; }
 
-        [JsonProperty("includedResourceGroups")] public List<string> IncludedResourceGroups { get; set; }
+        [JsonProperty("azureFiActions")] public List<string> AzureFiActions { get; set; }
 
         [JsonProperty("isChaosEnabled")] public bool IsChaosEnabled { get; set; }
 
