@@ -313,6 +313,7 @@
     <Content Include="DeploymentTemplate\azuredeploy.parameters.json" />
     <Content Include="DeploymentTemplate\deploymentScripts.ps1" />
     <Content Include="Content\updated\scss\style.scss" />
+    <Content Include="Content\updated\fonts\glyphicons-halflings-regular.woff2" />
     <None Include="Properties\PublishProfiles\AzureFaultInjection - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\AzureFaultInjectionTest - Web Deploy.pubxml" />
     <Content Include="Scripts\js\bootstrap-datetimepicker.js" />

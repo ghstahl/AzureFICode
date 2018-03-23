@@ -33,6 +33,10 @@ namespace AzureChaos.Core.Interfaces
                 var recentlyExecutedAvailabilityZoneRegionCombination = GetRecentlyExecutedAvailabilityZoneRegionCombination();
                 var avilabilityZoneRegionCombinations = possibleAvailabilityZoneRegionCombinations.Except(recentlyExecutedAvailabilityZoneRegionCombination);
                 var avilabilityZoneRegionCombinationsList = avilabilityZoneRegionCombinations.ToList();
+                if(avilabilityZoneRegionCombinationsList.Count == 0)
+                {
+                    return;
+                }
 
                 var random = new Random();
                 var randomAvailabilityZoneRegion = avilabilityZoneRegionCombinationsList[random.Next(0, avilabilityZoneRegionCombinationsList.Count - 1)];
@@ -75,7 +79,8 @@ namespace AzureChaos.Core.Interfaces
                 var scheduledRulesbatchOperation = VirtualMachineHelper
                     .CreateScheduleEntityForAvailabilityZone(
                         batchItems,
-                    azureClient.AzureSettings.Chaos.SchedulerFrequency);
+                    azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                    azureClient.AzureSettings.Chaos.AzureFaultInjectionActions);
 
                 if (scheduledRulesbatchOperation.Count <= 0) return;
                 batchTasks.Add(table.ExecuteBatchAsync(scheduledRulesbatchOperation));

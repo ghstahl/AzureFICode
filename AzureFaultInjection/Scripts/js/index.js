@@ -13,7 +13,7 @@ var app = {
     this.prevButton();
     this.validateForm();
     this.startOver();
-    this.editForm();
+   // this.editForm();
     this.killEnterKey();
     this.handleStepClicks();
   },
@@ -44,6 +44,9 @@ var app = {
   },
 
   setupAria: function () {
+    if (!this.$formStepParents) {
+      return;
+    }
 
     // set first parent to visible
     this.$formStepParents.eq(0).attr("aria-hidden", false);
@@ -58,6 +61,9 @@ var app = {
 
   nextButton: function () {
 
+    if (!this.$nextButton) {
+      return;
+    }
     this.$nextButton.on("click", function (e) {
 
       e.preventDefault();
@@ -77,6 +83,9 @@ var app = {
   },
 
   prevButton: function () {
+    if (!this.$prevButton) {
+      return;
+    }
 
     this.$prevButton.on("click", function (e) {
 
@@ -173,6 +182,10 @@ var app = {
   },
 
   validateForm: function () {
+    if (!this.$form) {
+      return;
+    }
+
     // jquery validate form validation
     this.$form.validate({
       ignore: ":hidden", // any children of hidden desc are ignored
@@ -199,6 +212,9 @@ var app = {
   },
 
   startOver: function () {
+    if (!this.$formStepParents) {
+      return;
+    }
 
     var $parents = this.$formStepParents,
       $firstParent = this.$formStepParents.eq(0),
@@ -270,6 +286,10 @@ var app = {
 
     var $stepTriggers = this.$steps,
       $stepParents = this.$formStepParents;
+
+    if (!$stepTriggers) {
+      return;
+    }
 
     $stepTriggers.on("click", function (e) {
 

@@ -88,7 +88,7 @@ namespace ChaosExecuter.Executer
                     scheduleRule.EventCompletedTime = DateTime.UtcNow;
                     scheduleRule.FinalState = virtualMachine.PowerState.Value;
                     scheduleRule.ExecutionStatus = Status.Completed.ToString();
-                    if (inputObject.Rollbacked)
+                    if (inputObject.EnableRollback)
                     {
                         scheduleRule.Rollbacked = true;
                     }
@@ -158,8 +158,14 @@ namespace ChaosExecuter.Executer
         /// <param name="virtualMachine">Virtual Machine</param>
         /// <param name="scheduledRules">Event activity entity</param>
         /// <returns></returns>
-        private static void PerformChaosOnVirtualMachine(ActionType actionType, IVirtualMachine virtualMachine, ScheduledRules scheduledRules)
+        private static void PerformChaosOnVirtualMachine(string action, IVirtualMachine virtualMachine, ScheduledRules scheduledRules)
         {
+            ActionType actionType;
+            if(!Enum.TryParse(action, out actionType))
+            {
+                return;
+            }
+
             switch (actionType)
             {
                 case ActionType.Start:
@@ -183,8 +189,14 @@ namespace ChaosExecuter.Executer
         /// <param name="currentAction">Current request action</param>
         /// <param name="state">Current Vm state.</param>
         /// <returns></returns>
-        private static bool IsValidChaos(ActionType currentAction, PowerState state)
+        private static bool IsValidChaos(string action, PowerState state)
         {
+            ActionType currentAction;
+            if (!Enum.TryParse(action, out currentAction))
+            {
+                return false;
+            }
+
             if (currentAction == ActionType.Start)
             {
                 return state != PowerState.Running && state != PowerState.Starting;

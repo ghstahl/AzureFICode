@@ -16,13 +16,23 @@ namespace AzureChaos.Core.Entity
 
         // Keeping the resource name for reporting purpose
         public string ResourceName { get; set; }
+
         public string TriggerData { get; set; }
+
         public string SchedulerSessionId { get; set; }
-        public bool Rollbacked { get; set; }
+
+        public bool? Rollbacked { get; set; }
+
         public DateTime? ScheduledExecutionTime { get; set; }
+
         public string ExecutionStatus { get; set; }
-        public string ChaosAction { get; set; }
+
+        public string FiOperation { get; set; }
+
+        public string CurrentAction { get; set; }
+
         public string CombinationKey { get; set; }
+
         public DateTime? ExecutionStartTime { get; set; }
 
         /// <summary>Event completed date time.</summary>

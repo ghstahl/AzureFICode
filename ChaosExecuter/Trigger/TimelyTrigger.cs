@@ -76,11 +76,12 @@ namespace ChaosExecuter.Trigger
                 }
 
                 var triggeredData = JsonConvert.DeserializeObject<InputObject>(result.TriggerData);
-                triggeredData.Action = VirtualMachineHelper.GetAction(result.FinalState);
-                if (!triggeredData.Rollbacked)
+                triggeredData.Action = VirtualMachineHelper.GetAction(result.FinalState).ToString();
+                if (!triggeredData.EnableRollback)
                 {
-                    triggeredData.Rollbacked = true;
+                    triggeredData.EnableRollback = true;
                 }
+
                 var functionName = Mappings.FunctionNameMap[partitionKey];
                 log.Info($"Timely trigger: invoking function: {functionName}");
                 tasks.Add(starter.StartNewAsync(functionName, JsonConvert.SerializeObject(triggeredData)));

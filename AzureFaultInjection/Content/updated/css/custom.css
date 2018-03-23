@@ -120,3 +120,10 @@ h4 {
     font-weight: 300;
     font-size: 1.25em;
 }
+
+.schedule h2, .activity h2 {
+    margin-bottom: 50px;
+}
+.schedule .col-md-3, .activity .col-md-3 {
+    padding-left: 0;
+}

@@ -52,6 +52,7 @@ namespace AzureChaos.Core.Interfaces
 
                         var batchOperation = VirtualMachineHelper.CreateScheduleEntity(batchItems,
                             azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                            azureClient.AzureSettings.Chaos.AzureFaultInjectionActions,
                             VirtualMachineGroup.VirtualMachines);
                         if (batchOperation == null) continue;
 
@@ -101,7 +102,7 @@ namespace AzureChaos.Core.Interfaces
         private int VmCount(int totalCount)
         {
             var vmPercentage = azureClient.AzureSettings?.Chaos?.VirtualMachineChaos?.PercentageTermination;
-            return vmPercentage != null ? (int)(vmPercentage / 100 * totalCount) : totalCount;
+            return vmPercentage != null && totalCount > 1 ? (int)(vmPercentage / 100 * totalCount) : totalCount;
         }
     }
 }
