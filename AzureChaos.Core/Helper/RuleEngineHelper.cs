@@ -14,24 +14,33 @@ namespace AzureChaos.Core.Helper
 {
     public class RuleEngineHelper
     {
-        public static ScheduledRules ConvertToScheduledRuleEntity<T>(T entity, string sessionId, ActionType action, DateTime executionTime, VirtualMachineGroup virtualMachineGroup) where T : CrawlerResponse
+        public static ScheduledRules ConvertToScheduledRuleEntity<T>(T entity, string sessionId,
+            ActionType action, string fiOperation, DateTime executionTime, VirtualMachineGroup virtualMachineGroup) where T : CrawlerResponse
         {
             if (entity == null || !Mappings.FunctionNameMap.ContainsKey(virtualMachineGroup.ToString()))
             {
                 return null;
             }
 
-            return new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
+            var scheduleRule =  new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
                 ResourceName = entity.ResourceName,
+                CurrentAction = action.ToString(),
+                FiOperation = fiOperation,
                 TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
-                SchedulerSessionId = sessionId,
-                Rollbacked = false
+                SchedulerSessionId = sessionId
             };
+
+            if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString())){
+                scheduleRule.Rollbacked = false;
+            }
+
+            return scheduleRule;
         }
 
-        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilitySet<T>(T entity, string sessionId, ActionType action, DateTime executionTime, bool domainFlage) where T : VirtualMachineCrawlerResponse
+        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilitySet<T>(T entity, string sessionId, 
+            ActionType action, string fiOperation, DateTime executionTime, bool domainFlage) where T : VirtualMachineCrawlerResponse
         {
             if (entity == null || !Mappings.FunctionNameMap.ContainsKey(VirtualMachineGroup.AvailabilitySets.ToString()))
             {
@@ -50,6 +59,7 @@ namespace AzureChaos.Core.Helper
             {
                 ResourceType = VirtualMachineGroup.AvailabilitySets.ToString(),
                 ScheduledExecutionTime = executionTime,
+                FiOperation = fiOperation,
                 ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
@@ -58,7 +68,8 @@ namespace AzureChaos.Core.Helper
             };
         }
 
-        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId, ActionType action, DateTime executionTime) where T : VirtualMachineCrawlerResponse
+        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId, 
+            ActionType action, string fiOperation, DateTime executionTime) where T : VirtualMachineCrawlerResponse
         {
             if (!Mappings.FunctionNameMap.ContainsKey(VirtualMachineGroup.AvailabilityZones.ToString()))
             {
@@ -69,6 +80,7 @@ namespace AzureChaos.Core.Helper
             {
                 ResourceType = VirtualMachineGroup.AvailabilityZones.ToString(),
                 ScheduledExecutionTime = executionTime,
+                FiOperation = fiOperation,
                 ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
@@ -83,7 +95,7 @@ namespace AzureChaos.Core.Helper
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,
-                Action = action,
+                Action = action.ToString(),
                 ResourceId = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,
                 VirtualMachineScaleSetId = crawlerResponse.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash)

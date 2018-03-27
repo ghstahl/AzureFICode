@@ -6,7 +6,7 @@ namespace AzureChaos.Core.Models
     public class InputObject
     {
         /// <summary>Get or sets the action name i.e. what action should be performed on the resource.</summary>
-        public ActionType Action { get; set; }
+        public string Action { get; set; }
 
         /// <summary>Get or sets  the resource name.</summary>
         public string ResourceId { get; set; }
@@ -24,6 +24,6 @@ namespace AzureChaos.Core.Models
         public string VirtualMachineScaleSetId { get; set; }
 
         /// <summary>Get or sets  the roolback.</summary>
-        public bool Rollbacked { get; set; }
+        public bool EnableRollback { get; set; }
     }
 }

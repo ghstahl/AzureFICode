@@ -97,7 +97,9 @@ namespace AzureChaos.Core.Interfaces
                     .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
                 var scheduledRulesbatchOperation =
                     VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(batchItems,
-                        _azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
+                        _azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                        _azureClient.AzureSettings.Chaos.AzureFaultInjectionActions,
+                        domainFlag);
                 if (scheduledRulesbatchOperation.Count <= 0)
                 {
                     return;

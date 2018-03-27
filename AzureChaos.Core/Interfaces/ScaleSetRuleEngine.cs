@@ -57,6 +57,7 @@ namespace AzureChaos.Core.Interfaces
                             .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
                         var batchOperation = VirtualMachineHelper.CreateScheduleEntity(batchItems,
                             azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                            azureClient.AzureSettings.Chaos.AzureFaultInjectionActions,
                             VirtualMachineGroup.VirtualMachineScaleSets);
 
                         var operation = batchOperation;

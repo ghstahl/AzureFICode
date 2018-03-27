@@ -6,6 +6,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AzureChaos.Core.Models.Configs;
 
 namespace AzureChaos.Core.Helper
 {
@@ -29,7 +30,7 @@ namespace AzureChaos.Core.Helper
                 AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
                     int.Parse(virtualMachine.AvailabilityZones.FirstOrDefault().Value) : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
-                State =  virtualMachine.PowerState?.Value
+                State = virtualMachine.PowerState?.Value
             };
 
             if (virtualMachine.InstanceView?.PlatformUpdateDomain > 0)
@@ -76,7 +77,8 @@ namespace AzureChaos.Core.Helper
         /// <param name="schedulerFrequency">Schedule frequency, it will be reading from the config</param>
         /// <param name="virtualMachineGroup"></param>
         /// <returns></returns>
-        public static TableBatchOperation CreateScheduleEntity(IList<VirtualMachineCrawlerResponse> filteredVmSet, int schedulerFrequency, VirtualMachineGroup virtualMachineGroup)
+        public static TableBatchOperation CreateScheduleEntity(IList<VirtualMachineCrawlerResponse> filteredVmSet,
+            int schedulerFrequency, List<string> azureFiOperationList, VirtualMachineGroup virtualMachineGroup)
         {
             TableBatchOperation tableBatchOperation = new TableBatchOperation();
             Random random = new Random();
@@ -89,13 +91,20 @@ namespace AzureChaos.Core.Helper
                     continue;
                 }
 
-                var actionType = GetAction(item.State);
+                var fiOperation = GetAzureFiOperation(azureFiOperationList);
+                if (string.IsNullOrWhiteSpace(fiOperation))
+                {
+                    continue;
+                }
+
+                var actionType = GetActionTobePerformed(item.State, fiOperation);
                 if (actionType == ActionType.Unknown)
                 {
                     continue;
                 }
 
-                var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity(item, sessionId, actionType, randomExecutionDateTime, virtualMachineGroup);
+                var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity(item, sessionId, actionType,
+                    fiOperation, randomExecutionDateTime, virtualMachineGroup);
                 if (entityEntry != null)
                 {
                     tableBatchOperation.InsertOrMerge(entityEntry);
@@ -105,7 +114,8 @@ namespace AzureChaos.Core.Helper
             return tableBatchOperation;
         }
 
-        public static TableBatchOperation CreateScheduleEntityForAvailabilityZone(IList<VirtualMachineCrawlerResponse> filteredVmSet, int schedulerFrequency)
+        public static TableBatchOperation CreateScheduleEntityForAvailabilityZone(IList<VirtualMachineCrawlerResponse> filteredVmSet, 
+            int schedulerFrequency, List<string> azureFiOperationList)
         {
             var tableBatchOperation = new TableBatchOperation();
             var random = new Random();
@@ -113,19 +123,27 @@ namespace AzureChaos.Core.Helper
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
-                var actionType = GetAction(item.State);
+                var fiOperation = GetAzureFiOperation(azureFiOperationList);
+                if (string.IsNullOrWhiteSpace(fiOperation))
+                {
+                    continue;
+                }
+
+                var actionType = GetActionTobePerformed(item.State, fiOperation);
                 if (actionType == ActionType.Unknown)
                 {
                     continue;
                 }
 
-                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone(item, sessionId, actionType, randomExecutionDateTime));
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone(item, 
+                    sessionId, actionType, fiOperation, randomExecutionDateTime));
             }
 
             return tableBatchOperation;
         }
 
-        public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponse> filteredVmSet, int schedulerFrequency, bool domainFlage)
+        public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponse> filteredVmSet, 
+            int schedulerFrequency, List<string> azureFiOperationList,  bool domainFlage)
         {
             var tableBatchOperation = new TableBatchOperation();
             var random = new Random();
@@ -133,17 +151,55 @@ namespace AzureChaos.Core.Helper
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
-                var actionType = GetAction(item.State);
+                var fiOperation = GetAzureFiOperation(azureFiOperationList);
+                if (string.IsNullOrWhiteSpace(fiOperation))
+                {
+                    continue;
+                }
+
+                var actionType = GetActionTobePerformed(item.State, fiOperation);
                 if (actionType == ActionType.Unknown)
                 {
                     continue;
                 }
 
-                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet(item, sessionId, actionType, randomExecutionDateTime, domainFlage));
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet(item, 
+                    sessionId, actionType, fiOperation, randomExecutionDateTime, domainFlage));
             }
 
             return tableBatchOperation;
         }
+
+        public static string GetAzureFiOperation(List<string> azureFaultInjectionActions)
+        {
+            if (azureFaultInjectionActions == null || !azureFaultInjectionActions.Any())
+            {
+                return string.Empty;
+            }
+
+            Random random = new Random();
+            int index = random.Next(0, azureFaultInjectionActions.Count - 1);
+            return azureFaultInjectionActions[index];
+        }
+
+        public static ActionType GetActionTobePerformed(string state, string selectedOpeartion)
+        {
+            if (!Enum.TryParse(selectedOpeartion, out AzureFiOperation azureFiOperation))
+            {
+                return ActionType.Unknown;
+            }
+
+            switch (azureFiOperation)
+            {
+                case AzureFiOperation.PowerCycle:
+                    return GetAction(state);
+                case AzureFiOperation.Restart:
+                    return ActionType.Restart;
+            }
+
+            return ActionType.Unknown;
+        }
+
 
         /// <summary>Get the action based on the current state of the virtual machine.</summary>
         /// <param name="state">Current state of the virtual machine.</param>

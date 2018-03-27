@@ -446,8 +446,7 @@ namespace AzureFaultInjection.Controllers
 
             return new Schedules()
             {
-                ResourceName = triggerData.ResourceId,
-                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ResourceName = scheduledRule.ResourceName,
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = triggerData.Action.ToString(),
                 IsRollbacked = scheduledRule.Rollbacked,
@@ -459,10 +458,10 @@ namespace AzureFaultInjection.Controllers
         {
             return new Activities()
             {
-                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ResourceName = scheduledRule.ResourceName,
                 ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
                 ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
-                ChaosOperation = scheduledRule.ChaosAction,
+                ChaosOperation = scheduledRule.CurrentAction,
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,
                 Status = scheduledRule.ExecutionStatus,
@@ -483,8 +482,8 @@ namespace AzureFaultInjection.Controllers
                 toDateTimeOffset = DateTimeOffset.UtcNow;
             }
 
-            return ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset,
-                toDateTimeOffset,
+            return ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
+                toDateTimeOffset.ToUniversalTime(),
                 "ScheduledExecutionTime",
                 StorageTableNames.ScheduledRulesTableName);
         }

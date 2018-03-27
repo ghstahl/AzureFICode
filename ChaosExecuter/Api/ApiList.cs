@@ -102,7 +102,7 @@ namespace ChaosExecuter.Api
             {
                 ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
-                ChaosOperation = scheduledRule.ChaosAction,
+                ChaosOperation = scheduledRule.CurrentAction,
                 IsRollbacked = scheduledRule.Rollbacked,
                 Status = scheduledRule.ExecutionStatus
             };
@@ -112,10 +112,10 @@ namespace ChaosExecuter.Api
         {
             return new Activities()
             {
-                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ResourceName = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
                 ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
                 ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
-                ChaosOperation = scheduledRule.ChaosAction,
+                ChaosOperation = scheduledRule.CurrentAction,
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,
                 Status = scheduledRule.ExecutionStatus,

@@ -2,7 +2,7 @@
 {
     public class Activities
     {
-        public string ResourceId { get; set; }
+        public string ResourceName { get; set; }
         public string ChaosOperation { get; set; }
         public string IsRolbacked { get; set; }
         public  string ChaosCompletedTime { get; set; }

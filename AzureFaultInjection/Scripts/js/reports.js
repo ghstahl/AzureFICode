@@ -1,7 +1,13 @@
 ﻿$(document).ready(function () {
-  $('#scheduleFromDate').datetimepicker();
+  var date = new Date();
+  var prevDate = date.setDate(date.getDate() - 1);
+  var currentDate = new Date();
+  $('#scheduleFromDate').datetimepicker({
+    defaultDate: prevDate,
+  });
   $('#scheduleToDate').datetimepicker({
-    useCurrent: false //Important! See issue #1075
+    useCurrent: false, //Important! See issue #1075
+    defaultDate: currentDate
   });
   $("#scheduleFromDate").on("dp.change", function (e) {
     $('#scheduleToDate').data("DateTimePicker").minDate(e.date);
@@ -9,10 +15,19 @@
   $("#scheduleToDate").on("dp.change", function (e) {
     $('#scheduleFromDate').data("DateTimePicker").maxDate(e.date);
   });
+  
+  var $scheduleFromDate = $('#scheduleFromDate input');
+  var $scheduleTodate = $('#scheduleToDate input');
 
+  var scheduleFromDate = $scheduleFromDate != null && $scheduleFromDate.length > 0 ? $scheduleFromDate[0].value : "";
+  var scheduleTodate = $scheduleTodate != null && $scheduleTodate.length > 0 ? $scheduleTodate[0].value : "";
+  getSchedules(scheduleFromDate, scheduleTodate);
 
-  $('#activityFromDate').datetimepicker();
+  $('#activityFromDate').datetimepicker({
+    defaultDate: prevDate
+  });
   $('#activityToDate').datetimepicker({
+    defaultDate: currentDate,
     useCurrent: false //Important! See issue #1075
   });
   $("#activityFromDate").on("dp.change", function (e) {
@@ -21,6 +36,13 @@
   $("#activityToDate").on("dp.change", function (e) {
     $('#activityFromDate').data("DateTimePicker").maxDate(e.date);
   });
+
+  var $activityFromDate = $('#activityFromDate input');
+  var $activityToDate = $('#activityToDate input');
+
+  var activityFromdate = $activityFromDate != null && $activityFromDate.length > 0 ? $activityFromDate[0].value : "";
+  var activityTodate = $activityToDate != null && $activityToDate.length > 0 ? $activityToDate[0].value : "";
+  getActivities(activityFromdate, activityTodate);
 });
 
 $("#activitySearch").on("click", function () {
@@ -42,7 +64,7 @@ function getActivities(fromdate, todate) {
     data: { fromDate: fromdate, toDate: todate }
   });
   request.done(function (response) {
-    var $tbody = $("table tbody");
+    var $tbody = $("table#activity tbody");
     appendActivityBody($tbody, response);
   });
 
@@ -58,7 +80,7 @@ function getSchedules(fromdate, todate) {
     data: { fromDate: fromdate, toDate: todate }
   });
   request.done(function (response) {
-    var $tbody = $("table tbody");
+    var $tbody = $("table#schedule tbody");
     appendScheduleBody($tbody, response);
   });
 
@@ -68,14 +90,23 @@ function getSchedules(fromdate, todate) {
 }
 
 function appendActivityBody($tbody, existingData) {
+  if (!existingData || existingData.length === 0) {
+    $tbody.html('');
+    var $tr = $("<tr></tr>");
+    var $emptyRecord = $("<td colspan=10></td>");
+    $emptyRecord.text("No records found");
+    $tr.append($emptyRecord);
+    $tbody.append($tr);
+    return;
+  }
   $.each(existingData, function (index) {
     this.CanEdit = true;
     var $tr = $("<tr></tr>");
     var $rowNumber = $("<td></td>");
     $rowNumber.text(index + 1);
 
-    var $resourceId = $("<td></td>");
-    $resourceId.text(this.ResourceId);
+    var $resourceName = $("<td></td>");
+    $resourceName.text(this.ResourceName);
 
     var $chaosOperation = $("<td></td>");
     $chaosOperation.text(this.ChaosOperation);
@@ -102,7 +133,7 @@ function appendActivityBody($tbody, existingData) {
     $warning.text(this.Warning);
 
     $tr.append($rowNumber);
-    $tr.append($resourceId);
+    $tr.append($resourceName);
     $tr.append($chaosOperation);
     $tr.append($chaosStartedTime);
     $tr.append($chaosCompletedTime);
@@ -117,6 +148,7 @@ function appendActivityBody($tbody, existingData) {
 
 function appendScheduleBody($tbody, existingData) {
   if (!existingData || existingData.length === 0) {
+    $tbody.html('');
     var $tr = $("<tr></tr>");
     var $emptyRecord = $("<td colspan=7></td>");
     $emptyRecord.text("No records found");
@@ -129,11 +161,8 @@ function appendScheduleBody($tbody, existingData) {
     var $rowNumber = $("<td></td>");
     $rowNumber.text(index + 1);
 
-    var $resourceIName = $("<td></td>");
-    $resourceIName.text(this.ResourceName);
-
-    var $resourceId = $("<td></td>");
-    $resourceId.text(this.ResourceId);
+    var $resourceName = $("<td></td>");
+    $resourceName.text(this.ResourceName);
 
     var $scheduledTime = $("<td></td>");
     $scheduledTime.text(this.ScheduledTime);
@@ -148,7 +177,7 @@ function appendScheduleBody($tbody, existingData) {
     $status.text(this.Status);
 
     $tr.append($rowNumber);
-    $tr.append($resourceId);
+    $tr.append($resourceName);
     $tr.append($scheduledTime);
     $tr.append($chaosOperation);
     $tr.append($isRollBacked);

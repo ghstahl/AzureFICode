@@ -136,8 +136,14 @@ namespace ChaosExecuter.Executer
         /// <param name="currentAction">Current request action</param>
         /// <param name="state">Current scale set Vm state.</param>
         /// <returns></returns>
-        private static bool IsValidChaos(ActionType currentAction, PowerState state)
+        private static bool IsValidChaos(string action, PowerState state)
         {
+            ActionType currentAction;
+            if (!Enum.TryParse(action, out currentAction))
+            {
+                return false;
+            }
+
             switch (currentAction)
             {
                 case ActionType.Start:
@@ -158,8 +164,14 @@ namespace ChaosExecuter.Executer
         /// <param name="scaleSetVm">Virtual Machine instance</param>
         /// <param name="scheduleRule">Event activity entity</param>
         /// <returns></returns>
-        private static async Task PerformChaos(ActionType actionType, IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule)
+        private static async Task PerformChaos(string action, IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule)
         {
+            ActionType actionType;
+            if (!Enum.TryParse(action, out actionType))
+            {
+                return;
+            }
+
             switch (actionType)
             {
                 case ActionType.Start:

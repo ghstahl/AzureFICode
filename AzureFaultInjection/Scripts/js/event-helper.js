@@ -1,15 +1,18 @@
-﻿app.$nextButton.on("click", function (e) {
-  var $this = $(this),
-    currentParent = $(this).closest("fieldset"),
-    prevParent = currentParent.prev();
-  if (app.isValid(currentParent)) {
-    if (currentParent.attr("id") === "step-1") {
-      getSubscriptions(currentParent);
+﻿if (app.$nextButton) {
+  app.$nextButton.on("click", function (e) {
+    var $this = $(this),
+      currentParent = $(this).closest("fieldset"),
+      prevParent = currentParent.prev();
+    if (app.isValid(currentParent)) {
+      if (currentParent.attr("id") === "step-1") {
+        getSubscriptions(currentParent);
+      }
     }
-  }
 
-  $('#azure-fault-injection-actions').SumoSelect({ selectAll: true });
-});
+    $('#azure-fault-injection-actions').SumoSelect({ selectAll: true });
+  });
+}
+
 app.showNextStep((current, next) => {
   var $this = $(this),
     currentParent = $(this).closest("fieldset"),
