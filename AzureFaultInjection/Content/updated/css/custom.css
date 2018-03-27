@@ -127,3 +127,6 @@ h4 {
 .schedule .col-md-3, .activity .col-md-3 {
     padding-left: 0;
 }
+.required{
+    color: red;
+}

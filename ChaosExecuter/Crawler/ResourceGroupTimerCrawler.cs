@@ -17,7 +17,7 @@ namespace ChaosExecuter.Crawler
     public static class ResourceGroupTimerCrawler
     {
         [FunctionName("timercrawlerresourcegroups")]
-        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("%CrawlerFrequency%")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.UtcNow}");
             try

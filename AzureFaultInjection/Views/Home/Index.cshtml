@@ -2,9 +2,9 @@
 
   <ul class="steps breadcrumbv1">
     <li class="active">Authenticate</li>
-    <li>Resource Selection</li>
-    <li>Config Settings</li>
-    <li>Frequency Settings</li>
+    <li>Resource Group(s) Selection</li>
+    <li>FI Scope</li>
+    <li>FI Settings</li>
   </ul>
   <div class="modal" style="display: none">
     <div class="center">
@@ -17,15 +17,15 @@
       <div class="section">
         <label for="tenant-id">
           Tenant Id
-        </label><div class="glyphicon glyphicon-question-sign" id="tooltip-tenant-id"></div>
+        </label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-tenant-id"></div>
         <input class="form-control" type="text" name="tenantId" id="tenant-id" required>
       </div>
       <div class="section">
-        <label for="client-id">Application Id</label><div class="glyphicon glyphicon-question-sign" id="tooltip-client-id"></div>
+        <label for="client-id">Application Id</label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-client-id"></div>
         <input class="form-control" type="text" name="clientId" id="client-id" required>
       </div>
       <div class="section">
-        <label for="client-secret">Application Key</label><div class="glyphicon glyphicon-question-sign" id="tooltip-client-secret"></div>
+        <label for="client-secret">Application Secret Key</label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-client-secret"></div>
         <input class="form-control" type="text" name="clientSecret" id="client-secret" required>
       </div>
       <p class="button-overlap">
@@ -36,17 +36,13 @@
     <fieldset aria-label="Resource Selections" tabindex="-1" id="step-2">
       <h4></h4>
       <div class="section">
-        <label for="subscription">Subscription</label><div class="glyphicon glyphicon-question-sign" id="tooltip-subscription"></div>
+        <label for="subscription">Subscription</label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-subscription"></div>
         <select class="form-control" id="selectSubscription" name="subscription" required></select>
       </div>
       <div class="section">
-        <label for="excluded-resource-groups">Excluded Resource Groups</label><div class="glyphicon glyphicon-question-sign" id="tooltip-exclude-resourcegroups"></div>
+        <label for="excluded-resource-groups">Excluded Resource Group(s)</label><div class="glyphicon glyphicon-question-sign" id="tooltip-exclude-resourcegroups"></div>
         <select class="form-control" multiple="multiple" id="excluded-resource-groups" name="excludedResourceGroups"></select>
       </div>
-      @*<p>
-          <label for="included-resource-groups">Included Resource Groups</label>
-          <select class="form-control" multiple="multiple" id="included-resource-groups" name="includedResourceGroups"></select>
-        </p>*@
       <p class="button-overlap">
         <button class="btn btn-default btn-prev" type="button" aria-controls="step-1">Previous</button>
         <button class="btn btn-default btn-next" type="button" aria-controls="step-3">Next</button>
@@ -59,8 +55,8 @@
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
-            <label for="vm-percentage">Termination Percentage</label><div class="glyphicon glyphicon-question-sign" id="tooltip-vm-percentage"></div>
-            <input type="number" class="form-control" value="50" name="vmPercentage" id="vm-percentage" required>
+            <label for="vm-percentage">Virtual Machines Percentage</label><div class="glyphicon glyphicon-question-sign" id="tooltip-vm-percentage"></div>
+            <input type="number" class="form-control" value="50" min="0" max="100" name="vmPercentage" id="vm-percentage" required>
           </div>
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isVmEnabled" id="vm-enabled">
@@ -102,8 +98,8 @@
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
-            <label for="vmss-percentage">Termination Percentage</label><div class="glyphicon glyphicon-question-sign" id="tooltip-vmss-percentage"></div>
-            <input type="number" class="form-control" value="50" name="vmssPercentage" id="vmss-percentage" required>
+            <label for="vmss-percentage">VM Scale Set instance Percentage</label><div class="glyphicon glyphicon-question-sign" id="tooltip-vmss-percentage"></div>
+            <input type="number" class="form-control" value="50" min="0" max="100" name="vmssPercentage" id="vmss-percentage" required>
           </div>
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isVmssEnabled" id="vmss-enabled">
@@ -112,11 +108,9 @@
         </div>
       </div>
       <div class="section">
-        <label for="azure-fault-injection-actions">Azure FI Actions</label><div class="glyphicon glyphicon-question-sign" id="tooltip-azure-fault-injection-actions"></div>
-        <select class="form-control" multiple="multiple" id="azure-fault-injection-actions" name="azureFiActions">
-          <option value="Restart">Restart</option>
-          <option value="PowerCycle">Power Cycle</option>
-        </select>
+        <label for="azure-fault-injection-actions">Azure FI Actions</label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-azure-fault-injection-actions"></div>
+        <select class="form-control" multiple="multiple" id="azure-fault-injection-actions" name="azureFiActions"  required>
+       </select>
       </div>
       <div class="button-overlap">
         <button class="btn btn-default btn-prev" type="button" aria-controls="step-2">Previous</button>
@@ -130,19 +124,19 @@
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
-            <label for="scheduler-frequency">Scheduler</label><div class="glyphicon glyphicon-question-sign" id="tooltip-scheduler-frequency"></div>
+            <label for="scheduler-frequency">Scheduler Frequency</label><div class="glyphicon glyphicon-question-sign" id="tooltip-scheduler-frequency"></div>
             <input type="number" class="form-control" value="60" name="schedulerFrequency" id="scheduler-frequency" required>
           </div>
           <div class="section">
-            <label for="rollback-frequency">Rollback</label><div class="glyphicon glyphicon-question-sign" id="tooltip-rollback-frequency"></div>
+            <label for="rollback-frequency">Power Cycle Schedule</label><div class="glyphicon glyphicon-question-sign" id="tooltip-rollback-frequency"></div>
             <input type="number" class="form-control" value="30" name="rollbackFrequency" id="rollback-frequency" required>
           </div>
           <div class="section">
-            <label for="crawler-frequency">Crawler</label><div class="glyphicon glyphicon-question-sign" id="tooltip-crawler-frequency"></div>
+            <label for="crawler-frequency">Crawler Frequency</label><div class="glyphicon glyphicon-question-sign" id="tooltip-crawler-frequency"></div>
             <input type="number" class="form-control" value="15" name="crawlerFrequency" id="crawler-frequency" required>
           </div>
           <div class="section">
-            <label for="mean-time">Meantime between kills</label><div class="glyphicon glyphicon-question-sign" id="tooltip-meantime"></div>
+            <label for="mean-time">Meantime between FI on a VM</label><div class="glyphicon glyphicon-question-sign" id="tooltip-meantime"></div>
             <input type="number" class="form-control" name="meanTime" value="120" id="mean-time" required>
           </div>
         </div>
@@ -151,10 +145,16 @@
         <input type="checkbox" class="form-check-input" name="isChaosEnabled" id="chaos-enabled">
         <label for="chaos-enabled">Enable Azure Fault Injection</label>
       </p>
+      <div class="form-inline">
+        <input type="radio" class="form-check-input" name="isAzureFiStartedOrStopped" id="isAzureFiStarted">
+        <label for="isAzureFiStarted">Start Fault Injection</label>
+        <input type="radio" class="form-check-input" name="isAzureFiStartedOrStopped" id="isAzureFiStopped">
+        <label for="isAzureFiStopped">Stop Fault Injection</label>
+      </div>
       <p class="button-overlap">
         <button class="btn btn-default btn-prev" type="button" aria-controls="step-3">Previous</button>
         <button class="btn btn-success" type="submit" id="submit">Configure and Deploy</button>
-        <button class="btn btn-danger" type="reset">Cancel</button>
+        <button class="btn btn-danger" type="reset" id="reset">Cancel</button>
       </p>
     </fieldset>
   </form>

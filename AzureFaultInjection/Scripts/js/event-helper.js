@@ -1,28 +1,40 @@
-﻿if (app.$nextButton) {
-  app.$nextButton.on("click", function (e) {
-    var $this = $(this),
-      currentParent = $(this).closest("fieldset"),
-      prevParent = currentParent.prev();
-    if (app.isValid(currentParent)) {
-      if (currentParent.attr("id") === "step-1") {
-        getSubscriptions(currentParent);
-      }
+﻿$(document).ready(function () {
+  getAzureOperations();
+  getTenantInformation();
+});
+
+function getTenantInformation() {
+  var request = $.ajax({
+    url: "api/FaultInjection/gettenantinformation",
+    type: "GET"
+  });
+
+  request.done(function (result) {
+    if (!result) {
+      console.log("azure operation list is empty");
+      return;
     }
 
-    $('#azure-fault-injection-actions').SumoSelect({ selectAll: true });
+    $('#tenant-id').val(result.TenantId);
+    $('#tenant-id').attr("readonly", true);
+    $('#client-id').attr("readonly", true);
+    $('#client-id').val(result.ApplicationId);
+  });
+
+  request.fail(function (jqXHR, textStatus) {
+    alert("Request failed: " + textStatus);
   });
 }
 
-app.showNextStep((current, next) => {
-  var $this = $(this),
-    currentParent = $(this).closest("fieldset"),
-    prevParent = currentParent.prev();
-});
 function getSubsId(id) {
   if (id && id.length > 2) {
     return id.split('/')[2];
   }
 }
+
+$("#reset").on("click", function (e) {
+  getTenantInformation();
+});
 $("#submit").on("click", function (e) {
   e.preventDefault();
   var values = {};
@@ -42,6 +54,16 @@ $("#submit").on("click", function (e) {
       }
       if (updateDomain) {
         values["isUpdateDomainEnabled"] = updateDomain;
+      }
+    }
+    if (field.name === 'isAzureFiStartedOrStopped') {
+      var azureFiStarted = $("#isAzureFiStarted")[0].checked;
+      var azureFiStopped = $("#isAzureFiStopped")[0].checked;
+      if (azureFiStarted) {
+        values["isChaosEnabled"] = true;
+      }
+      if (azureFiStopped) {
+        values["isChaosEnabled"] = false;
       }
     }
     if (field.name === 'subscription') {
@@ -93,33 +115,18 @@ $("#selectSubscription").change(function () {
   getResourceGroups(subscription);
 });
 
-//function hideResourceGroups(selector, selectedValues) {
-//  $(selector + " option").each(function (index) {
-//    var $option = $(this)[0]
-//    if (selectedValues && $.inArray($option.value)) {
-//      $.each(selectedValues, function (key, value) {
-//        var $element = $(selector + " option[value='" + value + "']");
-//        $(selector).next()
-//          .next(".optWrapper.selall.multiple")
-//          .find(".options li:contains('" + $element.text() + "')").css("display", "none");
-//        $element.css("display", "none");
-//      });
-//    } else {
-//      $option.removeAttribute("style");
-//      $(selector).next()
-//        .next(".optWrapper.selall.multiple")
-//        .find(".options li:contains('" + $option.text + "')").removeAttr("style");
-//    }
-//  })
-//}
+function getSubscriptions(currentParent, nextParent, callback) {
+  var tenantId = currentParent.find("#tenant-id").val();
+  var clientId = currentParent.find("#client-id").val();
+  var clientSecret = currentParent.find("#client-secret").val();
+  if (!tenantId || !clientId || !clientSecret) {
+    return false;
+  }
 
-function getSubscriptions(currentStepObj) {
-  var tenantId = currentStepObj.find("#tenant-id").val();
-  var clientId = currentStepObj.find("#client-id").val();
-  var clientSecret = currentStepObj.find("#client-secret").val();
   var request = $.ajax({
     url: "api/FaultInjection/getsubscriptions",
     type: "GET",
+    async: false,
     data: { tenantId: tenantId, clientId: clientId, clientSecret: clientSecret },
     beforeSend: function () {
       $(".modal").show();
@@ -134,15 +141,18 @@ function getSubscriptions(currentStepObj) {
   request.done(function (response) {
     if (!response) {
       alert("Something went wrong, please try again later!");
-      return;
+      callback(currentParent, nextParent, false);
     }
+
+    console.log("Resource Group Name: " + response.ResourceGroup)
+    console.log("Storage Account Name: " + response.StorageAccount)
     if (response.Success === false || !response.Result) {
       console.log("subscription list is empty");
       if (response.ErrorMessage) {
         alert(response.ErrorMessage);
       }
 
-      return;
+      callback(currentParent, nextParent, false);
     }
 
     var result = response.Result;
@@ -159,10 +169,13 @@ function getSubscriptions(currentStepObj) {
     else {
       getResourceGroups(result.SubcriptionList[0].id);
     }
+
+    callback(currentParent, nextParent, true);
   });
 
   request.fail(function (jqXHR, textStatus) {
     alert("Request failed: " + textStatus);
+    callback(currentParent, nextParent, false);
   });
 }
 
@@ -193,6 +206,27 @@ function getResourceGroups(subscription) {
   });
 }
 
+function getAzureOperations() {
+  var request = $.ajax({
+    url: "api/FaultInjection/getazureoperations",
+    type: "GET"
+  });
+
+  request.done(function (result) {
+    if (!result) {
+      console.log("azure operation list is empty");
+      return;
+    }
+
+    bindDictionaryOptions($('#azure-fault-injection-actions'), result);
+    $('#azure-fault-injection-actions').SumoSelect({ selectAll: true });
+  });
+
+  request.fail(function (jqXHR, textStatus) {
+    alert("Request failed: " + textStatus);
+  });
+}
+
 function bindExistingConfig(model, resourceGroups) {
   if (resourceGroups) {
     bindOptions($('#excluded-resource-groups'), resourceGroups);
@@ -216,7 +250,12 @@ function bindExistingConfig(model, resourceGroups) {
     $("#rollback-frequency")[0].value = model.rollbackFrequency;
     $("#crawler-frequency")[0].value = model.crawlerFrequency;
     $("#mean-time")[0].value = model.meanTime;
-    $("#chaos-enabled")[0].checked = model.isChaosEnabled;
+    if (model.isChaosEnabled) {
+      $("#isAzureFiStarted")[0].checked = model.isChaosEnabled;
+    }
+    else {
+      $("#isAzureFiStopped")[0].checked = true;
+    }
   }
 }
 
@@ -228,6 +267,17 @@ function selectItem(needsToBeSelected, selector) {
   }
 }
 
+function bindDictionaryOptions($element, result) {
+  $element.empty();
+  $.each(result, function (index, item) {
+    $element.append(
+      $('<option/>', {
+        value: index,
+        text: item
+      })
+    );
+  });
+}
 
 function bindOptions($element, result) {
   $element.empty();

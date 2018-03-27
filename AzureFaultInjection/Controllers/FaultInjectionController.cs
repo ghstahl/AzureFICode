@@ -1,12 +1,12 @@
 ﻿using AzureChaos.Core.Constants;
 using AzureChaos.Core.Entity;
+using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Models.Configs;
 using AzureFaultInjection.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Models;
 using Microsoft.Azure.Management.Storage.Fluent;
 using Microsoft.Rest.Azure;
@@ -34,23 +34,64 @@ namespace AzureFaultInjection.Controllers
     public class FaultInjectionController : ApiController
     {
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
-        private const string CommonName = "AzureFaultInjection";
+        private const string CommonName = "azurefi";
         private const string StorageConnectionString = "ConfigStorageConnectionString";
+        private const string TenantIdString = "TenantId";
+        private const string ApplicationIdString = "ApplicationId";
+        private const string ResourceGroupName = "ResourceGroupName";
+        private const string StorageAccountName = "StorageAccountName";
+        private const string TimerExpressionByMinutes = "0 */{0} * * * *";
+        private const string TimerExpressionByHours = "0 0 */{0} * * *";
+
+        [ActionName("gettenantinformation")]
+        public Dictionary<string, string> GetTenantInformation()
+        {
+            return new Dictionary<string, string>() {
+                { TenantIdString, ConfigurationManager.AppSettings[TenantIdString]},
+                { ApplicationIdString, ConfigurationManager.AppSettings[ApplicationIdString] }
+            };
+        }
+
 
         [ActionName("getschedules")]
         public IEnumerable<Schedules> GetSchedules(string fromDate, string toDate)
         {
-            var entities = GetSchedulesByDate(fromDate, toDate);
-            var result = entities.Select(ConvertToSchedule);
-            return result;
+            try
+            {
+                var configItems = ConfigurationManager.AppSettings[StorageConnectionString];
+
+                var entities = GetSchedulesByDate(fromDate, toDate);
+                var result = entities.Select(ConvertToSchedule);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [ActionName("getactivities")]
         public IEnumerable<Activities> GetActivities(string fromDate, string toDate)
         {
-            var entities = GetSchedulesByDate(fromDate, toDate);
-            var result = entities.Select(ConvertToActivity);
-            return result;
+            try
+            {
+                var entities = GetSchedulesByDate(fromDate, toDate);
+                var result = entities.Select(ConvertToActivity);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        [ActionName("getazureoperations")]
+        public Dictionary<string, string> GetAzureOperations()
+        {
+            return new Dictionary<string, string>() {
+                {AzureFiOperation. PowerCycle.ToString(), "Power Cycle"},
+                {AzureFiOperation.Restart.ToString(), "Restart"}
+            };
         }
 
         // GET: api/Api
@@ -107,7 +148,11 @@ namespace AzureFaultInjection.Controllers
             }
 
             //return response;
-            return new FaultInjectionResponseModel<DisplayConfigResponseModel>() { Result = model, Success = true };
+            return new FaultInjectionResponseModel<DisplayConfigResponseModel>()
+            {
+                Result = model,
+                Success = true
+            };
         }
 
         [ActionName("getresourcegroups")]
@@ -152,26 +197,26 @@ namespace AzureFaultInjection.Controllers
 
             try
             {
+                var storageAccountName = ConfigurationManager.AppSettings[StorageAccountName];
+                var resourceGroupName = ConfigurationManager.AppSettings[ResourceGroupName];
+
+                if (string.IsNullOrWhiteSpace(storageAccountName) || string.IsNullOrWhiteSpace(resourceGroupName))
+                {
+                    throw new ArgumentNullException("Storage account name or resource group name is null "
+                        + "Storage Param: " + StorageAccountName + " Resource Param: " + ResourceGroupName);
+                }
+
                 var azure = AzureClient.GetAzure(model.ClientId,
                     model.ClientSecret,
                     model.TenantId,
                     model.Subscription);
 
-                var resourceGroupName = GetUniqueHash(model.TenantId + model.ClientId + CommonName);
-                model.SelectedRegion = Region.USEast.Name;
-                IResourceGroup resourceGroup;
-                try
+                var resourceGroup = azure.ResourceGroups.GetByName(resourceGroupName);
+                if (resourceGroup == null)
                 {
-                    resourceGroup = azure.ResourceGroups.GetByName(resourceGroupName);
+                    throw new ArgumentNullException(ResourceGroupName, "Resource group information is empty: " + ResourceGroupName);
                 }
-                catch (Exception e)
-                {
-                    resourceGroup =
-                        ApiHelper.CreateResourceGroup(azure, resourceGroupName, model.SelectedRegion);
-                }
-                model.SelectedDeploymentRg = resourceGroupName;
-                var storageAccountName = GetUniqueHash(model.TenantId + model.ClientId + resourceGroupName + CommonName);
-                model.StorageAccountName = storageAccountName;
+
                 var storageAccounts = azure.StorageAccounts.ListByResourceGroup(resourceGroupName);
                 IStorageAccount storageAccountInfo = null;
                 if (storageAccounts != null && storageAccounts.Count() > 0)
@@ -182,22 +227,14 @@ namespace AzureFaultInjection.Controllers
 
                 if (storageAccountInfo == null)
                 {
-                    try
-                    {
-                        storageAccountInfo = ApiHelper.CreateStorageAccount(azure, resourceGroup.Name, model.SelectedRegion,
-                            storageAccountName);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new HttpRequestWithStatusException("storage account not created",
-                      new HttpResponseException(HttpStatusCode.InternalServerError));
-                    }
+                    throw new ArgumentNullException(StorageAccountName, "Storage account information is empty: " + storageAccountName);
                 }
 
                 var storageKeys = storageAccountInfo.GetKeys();
                 string storageConnection = string.Format(StorageConStringFormat,
-                    model.StorageAccountName, storageKeys[0].Value);
-                AddAppsettings(StorageConnectionString, storageConnection);
+                    storageAccountName, storageKeys[0].Value);
+
+                InsertOrUpdateAppsettings(StorageConnectionString, storageConnection);
                 var storageAccount = CloudStorageAccount.Parse(storageConnection);
                 var blockBlob = ApiHelper.CreateBlobContainer(storageAccount);
                 var configString = ApiHelper.ConvertConfigObjectToString(model);
@@ -207,22 +244,46 @@ namespace AzureFaultInjection.Controllers
                     blockBlob.UploadFromStream(ms);
                 }
 
-                var functionAppName =
-                    GetUniqueHash(model.ClientId + model.TenantId + model.Subscription + CommonName);
+                var functionAppName = CommonName +
+                    GetUniqueHash(model.ClientId + model.TenantId + model.Subscription);
 
                 var azureFunctions =
                     azure.AppServices.FunctionApps.ListByResourceGroup(resourceGroupName);
 
                 // try to give the read and write permissions
                 if (azureFunctions != null && azureFunctions.Count() > 0)
-                    return new FaultInjectionResponseModel<ConfigModel>() { Success = true, SuccessMessage = "Configuration updated successfully", Result = model }; ;
+
+                {
+                    var functionApp = azureFunctions.FirstOrDefault(x => x.Name.Equals(functionAppName, StringComparison.OrdinalIgnoreCase));
+                    if (functionApp != null)
+                    {
+                        return new FaultInjectionResponseModel<ConfigModel>()
+                        {
+                            Success = true,
+                            SuccessMessage = "Configuration updated successfully",
+                            Result = model
+                        };
+                    }
+                }
+
+                // TODO: ask ? do we deploy the azure functions, whenever user do any changes in the  config?
                 if (!DeployAzureFunctions(model, functionAppName, storageConnection, resourceGroupName))
                 {
                     throw new HttpRequestWithStatusException("Azure Functions are not deployed",
                         new HttpResponseException(HttpStatusCode.InternalServerError));
                 }
 
-                return new FaultInjectionResponseModel<ConfigModel>() { Success = true, SuccessMessage = "Deployment Completed Successfully", Result = model };
+
+                // add the tenant id and application id into the configuration file to validate the user next time.
+                InsertOrUpdateAppsettings(TenantIdString, model.TenantId);
+                InsertOrUpdateAppsettings(ApplicationIdString, model.ClientId);
+
+                return new FaultInjectionResponseModel<ConfigModel>()
+                {
+                    Success = true,
+                    SuccessMessage = "Deployment Completed Successfully",
+                    Result = model
+                };
             }
             catch (Exception e)
             {
@@ -300,62 +361,43 @@ namespace AzureFaultInjection.Controllers
             return hash.ToString().Substring(0, 24);
         }
 
-        private static void InsertNewAppsettingsKey(string key, string value)
-        {
-            XmlDocument doc = new XmlDocument();
-            doc.Load(HttpContext.Current.Server.MapPath(@"~/Web.config"));
-
-
-            // This should find the appSettings node (should be only one):
-            XmlNode nodeAppSettings = doc.SelectSingleNode("//appSettings");
-
-
-            // Create new <add> node
-            XmlNode nodeNewKey = doc.CreateElement("add");
-
-
-            // Create new attribute for key=""
-            XmlAttribute attributeKey = doc.CreateAttribute("key");
-            // Create new attribute for value=""
-            XmlAttribute attributeValue = doc.CreateAttribute("value");
-
-
-            // Assign values to both - the key and the value attributes:
-
-
-            attributeKey.Value = key;
-            attributeValue.Value = value;
-
-
-            // Add both attributes to the newly created node:
-            nodeNewKey.Attributes.Append(attributeKey);
-            nodeNewKey.Attributes.Append(attributeValue);
-
-            // Add the node under the 
-            nodeAppSettings.AppendChild(nodeNewKey);
-            doc.Save(HttpContext.Current.Server.MapPath(@"~/Web.config"));
-        }
-
-        private static bool AddAppsettings(string keyName, string value)
+        private static bool InsertOrUpdateAppsettings(string key, string value)
         {
             try
             {
-                var config =
-                System.Web.Configuration.WebConfigurationManager.OpenWebConfiguration(null);
-                //var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                if (ConfigurationManager.AppSettings.AllKeys.Contains(keyName))
+                XmlDocument doc = new XmlDocument();
+                doc.Load(HttpContext.Current.Server.MapPath(@"~/Web.config"));
+
+
+                // This should find the appSettings node (should be only one):
+                XmlNode nodeAppSettings = doc.SelectSingleNode("//appSettings");
+                var configNode = nodeAppSettings.SelectSingleNode("//add[@key='" + key + "']");
+                if (configNode != null)
                 {
-                    ConfigurationManager.AppSettings[keyName] = value;
+                    configNode.Attributes["value"].Value = value;
                 }
                 else
                 {
-                    // config.AppSettings.Settings.Add(keyName, value);
-                    InsertNewAppsettingsKey(keyName, value);
+                    // Create new <add> node
+                    XmlNode nodeNewKey = doc.CreateElement("add");
+
+                    // Create new attribute for key=""
+                    XmlAttribute attributeKey = doc.CreateAttribute("key");
+                    // Create new attribute for value=""
+                    XmlAttribute attributeValue = doc.CreateAttribute("value");
+
+                    // Assign values to both - the key and the value attributes:
+                    attributeKey.Value = key;
+                    attributeValue.Value = value;
+
+                    // Add both attributes to the newly created node:
+                    nodeNewKey.Attributes.Append(attributeKey);
+                    nodeNewKey.Attributes.Append(attributeValue);
+                    // Add the node under the 
+                    nodeAppSettings.AppendChild(nodeNewKey);
                 }
 
-                //config.Save(ConfigurationSaveMode.Modified);
-
-                //ConfigurationManager.RefreshSection("appSettings");
+                doc.Save(HttpContext.Current.Server.MapPath(@"~/Web.config"));
                 return true;
             }
             catch (Exception ex)
@@ -396,7 +438,8 @@ namespace AzureFaultInjection.Controllers
                 myCommand.Parameters.Add(new CommandParameter("logicAppName", functionAppName));
                 myCommand.Parameters.Add(new CommandParameter("functionAppName", functionAppName));
                 myCommand.Parameters.Add(new CommandParameter("connectionString", storageConnection));
-
+                myCommand.Parameters.Add(new CommandParameter("crawlerFrequency", string.Format(TimerExpressionByMinutes, model.CrawlerFrequency)));
+                myCommand.Parameters.Add(new CommandParameter("schedulerFrequency", string.Format(TimerExpressionByMinutes, model.SchedulerFrequency)));
                 pipeline.Commands.Add(myCommand);
 
                 // Execute PowerShell script

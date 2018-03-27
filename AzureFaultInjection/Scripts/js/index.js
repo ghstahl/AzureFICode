@@ -13,7 +13,7 @@ var app = {
     this.prevButton();
     this.validateForm();
     this.startOver();
-   // this.editForm();
+    // this.editForm();
     this.killEnterKey();
     this.handleStepClicks();
   },
@@ -75,11 +75,17 @@ var app = {
 
       // if the form is valid hide current step
       // trigger next step
-      if (app.checkForValidForm() && app.isValid(currentParent)) {
-        currentParent.removeClass(app.htmlClasses.visibleClass);
-        app.showNextStep(currentParent, nextParent);
+
+      if (app.checkForValidForm()) {
+        app.isValid(currentParent, nextParent);
       }
     });
+  },
+  moveNext: function (currentParent, nextParent, validToMove) {
+    if (validToMove && currentParent) {
+      currentParent.removeClass(app.htmlClasses.visibleClass);
+      app.showNextStep(currentParent, nextParent);
+    }
   },
 
   prevButton: function () {
@@ -257,10 +263,9 @@ var app = {
     if (step === 0) {
       this.$steps
         .removeClass(app.htmlClasses.activeClass)
-       // .attr("disabled", "disabled");
+      // .attr("disabled", "disabled");
       this.$steps.eq(0).addClass(app.htmlClasses.activeClass)
     }
-
   },
 
   editForm: function () {
@@ -300,18 +305,18 @@ var app = {
       // kill active state for items after step trigger
       $stepTriggers.nextAll()
         .removeClass(app.htmlClasses.activeClass)
-        //.attr("disabled", true);
+      //.attr("disabled", true);
 
       // activate button clicked
       $(this)
         .addClass(app.htmlClasses.activeClass)
-       // .attr("disabled", false)
+      // .attr("disabled", false)
 
       // hide all step parents
       $stepParents
         .removeClass(app.htmlClasses.visibleClass)
         .addClass(app.htmlClasses.hiddenClass)
-       // .attr("aria-hidden", true);
+      // .attr("aria-hidden", true);
 
       // show step that matches index of button
       $stepParents.eq(btnClickedIndex)
@@ -324,27 +329,24 @@ var app = {
 
   },
 
-  isValid(currentParent) {
+  isValid(currentParent, nextParent) {
     if (currentParent.attr("id") === "step-1") {
-      return app.step1Validation(currentParent);
+      return app.step1Validation(currentParent, nextParent);
     }
     else if (currentParent.attr("id") === "step-3") {
-      return app.step3Validation(currentParent);
+      return this.moveNext(currentParent, nextParent, app.step3Validation(currentParent, nextParent));
     }
 
-    return true;
+    this.moveNext(currentParent, nextParent, true);
   },
 
   // Specific steps validation
-  step1Validation: function (currentParent) {
+  step1Validation: function (currentParent, nextParent) {
     if (!currentParent) {
       return false;
     }
 
-    var tenantId = currentParent.find("#tenant-id").val();
-    var clientId = currentParent.find("#client-id").val();
-    var clientSecret = currentParent.find("#client-secret").val();
-    return (tenantId && clientId && clientSecret);
+    return getSubscriptions(currentParent, nextParent, this.moveNext);
   },
 
   step3Validation: function (currentParent) {
@@ -363,7 +365,7 @@ var app = {
     }
     else if (faultDomainEnabled || updateDomainEnabled) {
       if (!avsetsEnabled) {
-        alert("Please enable the avvailable sets chaos");
+        alert("Please enable the available sets azure fi");
         return false;
       }
     }

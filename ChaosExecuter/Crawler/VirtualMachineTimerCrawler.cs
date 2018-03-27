@@ -22,7 +22,7 @@ namespace ChaosExecuter.Crawler
     {
         // TODO: need to read the crawler timer from the configuration.
         [FunctionName("timercrawlerforvirtualmachines")]
-        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("%CrawlerFrequency%")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
             try
