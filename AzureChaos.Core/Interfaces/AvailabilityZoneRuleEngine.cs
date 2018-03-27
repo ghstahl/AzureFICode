@@ -96,7 +96,7 @@ namespace AzureChaos.Core.Interfaces
                 DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
             var recentlyExecutedAvailabilityZoneRegionCombinationQuery = TableQuery.GenerateFilterCondition(
-                "PartitionKey",
+                "ResourceType",
                 QueryComparisons.Equal,
                 VirtualMachineGroup.AvailabilityZones.ToString());
 

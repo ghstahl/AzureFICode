@@ -102,7 +102,7 @@ namespace AzureChaos.Core.Interfaces
                 {
                     return;
                 }
-                
+
                 batchTasks.Add(table.ExecuteBatchAsync(scheduledRulesbatchOperation));
             }
 
@@ -121,7 +121,7 @@ namespace AzureChaos.Core.Interfaces
                 DateTimeOffset.UtcNow.AddMinutes(-_azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
             var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition(
-                "PartitionKey",
+                "ResourceType",
                 QueryComparisons.Equal,
                 VirtualMachineGroup.AvailabilitySets.ToString());
 

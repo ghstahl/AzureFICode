@@ -46,8 +46,9 @@ namespace AzureChaos.Core.Helper
             {
                 combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
-            return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
+            return new ScheduledRules(System.Guid.NewGuid().ToString(), entity.RowKey)
             {
+                ResourceType = VirtualMachineGroup.AvailabilitySets.ToString(),
                 ScheduledExecutionTime = executionTime,
                 ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
@@ -64,8 +65,9 @@ namespace AzureChaos.Core.Helper
                 return null;
             }
 
-            return new ScheduledRules(VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey)
+            return new ScheduledRules(System.Guid.NewGuid().ToString(), entity.RowKey)
             {
+                ResourceType = VirtualMachineGroup.AvailabilityZones.ToString(),
                 ScheduledExecutionTime = executionTime,
                 ResourceName = entity.ResourceName,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
