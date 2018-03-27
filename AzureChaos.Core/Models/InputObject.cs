@@ -8,6 +8,9 @@ namespace AzureChaos.Core.Models
         /// <summary>Get or sets the action name i.e. what action should be performed on the resource.</summary>
         public string Action { get; set; }
 
+        /// <summary>Get or sets the resource type.</summary>
+        public string ResourceType { get; set; }
+
         /// <summary>Get or sets  the resource name.</summary>
         public string ResourceId { get; set; }
 

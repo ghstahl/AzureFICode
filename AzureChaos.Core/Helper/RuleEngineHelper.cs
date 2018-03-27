@@ -21,25 +21,27 @@ namespace AzureChaos.Core.Helper
             {
                 return null;
             }
-
-            var scheduleRule =  new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
+            var localGUID = System.Guid.NewGuid().ToString();
+            var scheduleRule = new ScheduledRules(localGUID, entity.RowKey)
             {
+                ResourceType = virtualMachineGroup.ToString(),
                 ScheduledExecutionTime = executionTime,
                 ResourceName = entity.ResourceName,
                 CurrentAction = action.ToString(),
                 FiOperation = fiOperation,
-                TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
+                TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, virtualMachineGroup.ToString()),
                 SchedulerSessionId = sessionId
             };
 
-            if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString())){
+            if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString()))
+            {
                 scheduleRule.Rollbacked = false;
             }
 
             return scheduleRule;
         }
 
-        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilitySet<T>(T entity, string sessionId, 
+        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilitySet<T>(T entity, string sessionId,
             ActionType action, string fiOperation, DateTime executionTime, bool domainFlage) where T : VirtualMachineCrawlerResponse
         {
             if (entity == null || !Mappings.FunctionNameMap.ContainsKey(VirtualMachineGroup.AvailabilitySets.ToString()))
@@ -55,20 +57,21 @@ namespace AzureChaos.Core.Helper
             {
                 combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
-            return new ScheduledRules(System.Guid.NewGuid().ToString(), entity.RowKey)
+            var localGUID = System.Guid.NewGuid().ToString();
+            return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilitySets.ToString(),
                 ScheduledExecutionTime = executionTime,
                 FiOperation = fiOperation,
                 ResourceName = entity.ResourceName,
-                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
+                TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilitySets.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = combinationKey,
                 Rollbacked = false
             };
         }
 
-        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId, 
+        public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId,
             ActionType action, string fiOperation, DateTime executionTime) where T : VirtualMachineCrawlerResponse
         {
             if (!Mappings.FunctionNameMap.ContainsKey(VirtualMachineGroup.AvailabilityZones.ToString()))
@@ -76,25 +79,27 @@ namespace AzureChaos.Core.Helper
                 return null;
             }
 
-            return new ScheduledRules(System.Guid.NewGuid().ToString(), entity.RowKey)
+            var localGUID = System.Guid.NewGuid().ToString();
+            return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilityZones.ToString(),
                 ScheduledExecutionTime = executionTime,
                 FiOperation = fiOperation,
                 ResourceName = entity.ResourceName,
-                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
+                TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilityZones.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,
                 Rollbacked = false
             };
         }
 
-        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action, string partitionKey, string rowKey)
+        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action, string partitionKey, string rowKey, string guid)
         {
             InputObject triggerdata = new InputObject
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,
+                ResourceType = guid,
                 Action = action.ToString(),
                 ResourceId = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,

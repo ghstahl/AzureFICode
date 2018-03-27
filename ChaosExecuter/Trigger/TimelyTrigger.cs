@@ -55,7 +55,7 @@ namespace ChaosExecuter.Trigger
             var tasks = new List<Task>();
             foreach (var result in scheduledRules)
             {
-                var partitionKey = result.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
+                var partitionKey = result.ResourceType.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
                 if (!Mappings.FunctionNameMap.ContainsKey(partitionKey))
                 {
                     continue;
@@ -69,7 +69,7 @@ namespace ChaosExecuter.Trigger
 
             foreach (var result in rollbackRules)
             {
-                var partitionKey = result.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
+                var partitionKey = result.ResourceType.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
                 if (!Mappings.FunctionNameMap.ContainsKey(partitionKey))
                 {
                     continue;

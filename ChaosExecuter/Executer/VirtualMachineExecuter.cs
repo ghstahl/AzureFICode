@@ -39,7 +39,7 @@ namespace ChaosExecuter.Executer
                 ExecutionStatus = Status.Started.ToString()
             };
 
-            if (!azureClient.IsChaosEnabledByGroup(inputObject.PartitionKey))
+            if (!azureClient.IsChaosEnabledByGroup(inputObject.ResourceType))
             {
                 scheduleRule.Warning = Warnings.ChaosDisabledAfterRules;
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
