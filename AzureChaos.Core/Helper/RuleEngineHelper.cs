@@ -21,7 +21,7 @@ namespace AzureChaos.Core.Helper
             {
                 return null;
             }
-            var localGUID = System.Guid.NewGuid().ToString();
+            var localGUID = sessionId;// System.Guid.NewGuid().ToString();
             var scheduleRule = new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = virtualMachineGroup.ToString(),
@@ -57,7 +57,7 @@ namespace AzureChaos.Core.Helper
             {
                 combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
-            var localGUID = System.Guid.NewGuid().ToString();
+            var localGUID = sessionId;// System.Guid.NewGuid().ToString();
             return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilitySets.ToString(),
@@ -79,7 +79,7 @@ namespace AzureChaos.Core.Helper
                 return null;
             }
 
-            var localGUID = System.Guid.NewGuid().ToString();
+            var localGUID = sessionId;// System.Guid.NewGuid().ToString();
             return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilityZones.ToString(),

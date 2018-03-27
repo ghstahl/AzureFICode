@@ -15,10 +15,12 @@ function getTenantInformation() {
       return;
     }
 
-    $('#tenant-id').val(result.TenantId);
-    $('#tenant-id').attr("readonly", true);
-    $('#client-id').attr("readonly", true);
-    $('#client-id').val(result.ApplicationId);
+    if (result.TenantId && result.ApplicationId) {
+      $('#tenant-id').val(result.TenantId);
+      $('#tenant-id').attr("readonly", true);
+      $('#client-id').attr("readonly", true);
+      $('#client-id').val(result.ApplicationId);
+    }
   });
 
   request.fail(function (jqXHR, textStatus) {

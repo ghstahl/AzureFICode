@@ -61,8 +61,7 @@ namespace AzureFaultInjection.Controllers
                 var configItems = ConfigurationManager.AppSettings[StorageConnectionString];
 
                 var entities = GetSchedulesByDate(fromDate, toDate);
-                var result = entities.Select(ConvertToSchedule);
-                return result;
+                return entities?.Select(ConvertToSchedule);
             }
             catch (Exception ex)
             {
@@ -76,8 +75,7 @@ namespace AzureFaultInjection.Controllers
             try
             {
                 var entities = GetSchedulesByDate(fromDate, toDate);
-                var result = entities.Select(ConvertToActivity);
-                return result;
+                return entities?.Select(ConvertToActivity);
             }
             catch (Exception ex)
             {

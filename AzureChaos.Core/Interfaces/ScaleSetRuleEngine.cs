@@ -42,6 +42,11 @@ namespace AzureChaos.Core.Interfaces
                 }
 
                 var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
+                if (table == null)
+                {
+                    return;
+                }
+
                 var count = VmCount(filteredVmSet.Count);
                 var tasks = new List<Task>();
 

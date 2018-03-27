@@ -75,7 +75,7 @@ namespace AzureChaos.Core.Helper
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
-        
+
         public static List<T> QueryByPartitionKey<T>(string partitionKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
@@ -110,7 +110,7 @@ namespace AzureChaos.Core.Helper
                     toDate));
             tableQuery = tableQuery.Where(dateFilter);
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
-            return resultsSet.ToList();
+            return resultsSet?.ToList();
         }
     }
 }

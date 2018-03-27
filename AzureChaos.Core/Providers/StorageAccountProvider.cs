@@ -19,12 +19,19 @@ namespace AzureChaos.Core.Providers
 
         static StorageAccountProvider()
         {
-          //  var azureSettings = new AzureClient().AzureSettings;
-            StorageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["ConfigStorageConnectionString"]);
+            if(!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["ConfigStorageConnectionString"]))
+            {
+                StorageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["ConfigStorageConnectionString"]);
+            }
         }
 
         public static CloudTable CreateOrGetTable(string tableName)
         {
+            if(StorageAccount == null)
+            {
+                return null;
+            }
+
             var tableClient = StorageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException($"storageAccount.CreateCloudTableClient()");
 
             // Retrieve a reference to the table.

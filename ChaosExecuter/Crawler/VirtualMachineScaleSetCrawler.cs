@@ -49,6 +49,10 @@ namespace ChaosExecuter.Crawler
             {
                 var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
                 var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
+                if (virtualMachineCloudTable == null || virtualMachineScaleSetTable == null)
+                {
+                    return;
+                }
 
                 var batchTasks = new ConcurrentBag<Task>();
                 var azureClient = new AzureClient();

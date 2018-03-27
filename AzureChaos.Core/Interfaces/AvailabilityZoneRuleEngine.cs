@@ -72,6 +72,11 @@ namespace AzureChaos.Core.Interfaces
             if (!virtualMachinesResults.Any()) return;
             var batchTasks = new List<Task>();
             var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
+            if (table == null)
+            {
+                return;
+            }
+
             for (var i = 0; i < virtualMachinesResults.Count; i += TableConstants.TableServiceBatchMaximumOperations)
             {
                 var batchItems = virtualMachinesResults.Skip(i)

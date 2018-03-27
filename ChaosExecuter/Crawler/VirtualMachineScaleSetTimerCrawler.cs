@@ -50,6 +50,10 @@ namespace ChaosExecuter.Crawler
                 var azureClient = new AzureClient();
                 var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
                 var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
+                if (virtualMachineCloudTable == null || virtualMachineScaleSetTable == null)
+                {
+                    return;
+                }
 
                 var batchTasks = new ConcurrentBag<Task>();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.

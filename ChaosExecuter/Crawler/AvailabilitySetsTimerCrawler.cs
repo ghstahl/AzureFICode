@@ -78,6 +78,11 @@ namespace ChaosExecuter.Crawler
         {
             var groupsByVirtulaMachine = virtualMachineConcurrentBag.SelectMany(x => x);
             var virtualmachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
+            if(virtualmachineCloudTable == null)
+            {
+                return;
+            }
+
             Parallel.ForEach(groupsByVirtulaMachine, groupItem =>
             {
                 // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
