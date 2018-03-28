@@ -103,7 +103,7 @@ namespace AzureChaos.Core.Interfaces
             var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
             var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.MeanTime));
 
             var recentlyExecutedAvailabilityZoneRegionCombinationQuery = TableQuery.GenerateFilterCondition(
                 "ResourceType",

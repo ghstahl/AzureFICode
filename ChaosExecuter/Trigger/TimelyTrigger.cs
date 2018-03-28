@@ -18,6 +18,7 @@ namespace ChaosExecuter.Trigger
     /// if the execution time is near.</summary>
     public static class TimelyTrigger
     {
+        private const int TriggerFrequency = 2;
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
         [FunctionName("TimelyTrigger")]
@@ -100,7 +101,7 @@ namespace ChaosExecuter.Trigger
                     DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency));
                 var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("EventCompletedTime",
                     QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency - azureSettings.Chaos.TriggerFrequency));
+                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency - TriggerFrequency));
                 var statusFilter =
                     TableQuery.GenerateFilterCondition("ExecutionStatus",
                         QueryComparisons.Equal,
@@ -134,7 +135,7 @@ namespace ChaosExecuter.Trigger
                     DateTimeOffset.UtcNow);
 
                 var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.LessThanOrEqual,
-                    DateTimeOffset.UtcNow.AddMinutes(azureSettings.Chaos.TriggerFrequency));
+                    DateTimeOffset.UtcNow.AddMinutes(TriggerFrequency));
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
                 var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);

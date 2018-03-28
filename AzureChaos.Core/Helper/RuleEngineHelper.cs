@@ -113,7 +113,7 @@ namespace AzureChaos.Core.Helper
             var enabledChaos = Mappings.GetEnabledChaos(azureSettings);
 
             var selectionQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.MeanTime));
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(selectionQuery);
             var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             if (executedResults == null)

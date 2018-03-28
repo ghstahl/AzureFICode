@@ -125,7 +125,7 @@ namespace AzureChaos.Core.Interfaces
             var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
             var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-_azureClient.AzureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-_azureClient.AzureSettings.Chaos.MeanTime));
 
             var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition(
                 "ResourceType",
