@@ -45,6 +45,42 @@ namespace AzureChaos.Core.Helper
             return virtualMachineCrawlerResponseEntity;
         }
 
+
+
+        /// <summary>Convert the Virtual machine to virtual machine crawler response entity.</summary>
+        /// <param name="virtualMachine">The virtual machine.</param>
+        /// <param name="partitionKey">The partition key for the virtaul machine entity.</param>
+        /// <param name="vmGroup">Vm group name.</param>
+        /// <returns></returns>
+        public static VirtualMachineCrawlerResponse ConvertToVirtualMachineEntityFromLB(IVirtualMachine virtualMachine, string partitionKey, string vmGroup = "")
+        {
+            var virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponse(partitionKey,
+                                                       virtualMachine.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
+            {
+                RegionName = virtualMachine.RegionName,
+                ResourceGroupName = virtualMachine.ResourceGroupName,
+                ResourceName = virtualMachine.Name,
+                AvailabilitySetId = virtualMachine.AvailabilitySetId,
+                ResourceType = virtualMachine.Type,
+                AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
+                    int.Parse(virtualMachine.AvailabilityZones.FirstOrDefault().Value) : 0,
+                VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
+                State = virtualMachine.PowerState?.Value
+            };
+
+            if (virtualMachine.InstanceView?.PlatformUpdateDomain > 0)
+            {
+                virtualMachineCrawlerResponseEntity.UpdateDomain = virtualMachine.InstanceView.PlatformUpdateDomain;
+            }
+            if (virtualMachine.InstanceView?.PlatformFaultDomain > 0)
+            {
+                virtualMachineCrawlerResponseEntity.FaultDomain = virtualMachine.InstanceView.PlatformFaultDomain;
+            }
+
+            return virtualMachineCrawlerResponseEntity;
+        }
+
+
         /// <summary>Convert the Virtual machine to virtual machine crawler response entity.</summary>
         /// <param name="scaleSetVirtualMachines">The virtual machine.</param>
         /// <param name="resourceGroup">The resource group name.</param>

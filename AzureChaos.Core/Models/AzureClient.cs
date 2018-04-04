@@ -34,7 +34,7 @@ namespace AzureChaos.Core.Models
                         AzureSettings.Client.TenantId, AzureSettings.Client.SubscriptionId);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // TODO: Logs
             }

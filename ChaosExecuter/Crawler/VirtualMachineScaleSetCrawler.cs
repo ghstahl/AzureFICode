@@ -48,6 +48,7 @@ namespace ChaosExecuter.Crawler
             try
             {
                 var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
+
                 var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
                 if (virtualMachineCloudTable == null || virtualMachineScaleSetTable == null)
                 {
@@ -57,7 +58,8 @@ namespace ChaosExecuter.Crawler
                 var batchTasks = new ConcurrentBag<Task>();
                 var azureClient = new AzureClient();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
-                Parallel.ForEach(resourceGroups, eachResourceGroup =>
+                foreach (var eachResourceGroup in resourceGroups)
+                //Parallel.ForEach(resourceGroups, eachResourceGroup =>
                 {
                     try
                     {
@@ -65,7 +67,7 @@ namespace ChaosExecuter.Crawler
                             .ListByResourceGroup(eachResourceGroup.Name);
                         GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList.ToList(), batchTasks,
                             virtualMachineCloudTable,
-                            virtualMachineScaleSetTable, log);
+                            virtualMachineScaleSetTable, azureClient, log);
                     }
                     catch (Exception e)
                     {
@@ -73,7 +75,8 @@ namespace ChaosExecuter.Crawler
                         log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
                             "GetScaleSetsForResourceGroups: for the resource group " + eachResourceGroup.Name);
                     }
-                });
+                }
+                //);
 
                 // execute all batch operation as parallel
                 await Task.WhenAll(batchTasks);
@@ -95,7 +98,7 @@ namespace ChaosExecuter.Crawler
         /// <returns></returns>
         private static void GetVirtualMachineAndScaleSetBatch(IEnumerable<IVirtualMachineScaleSet> virtualMachineScaleSets,
                                                               ConcurrentBag<Task> batchTasks, CloudTable virtualMachineCloudTable,
-                                                              CloudTable virtualMachineScaleSetCloudTable, TraceWriter log)
+                                                              CloudTable virtualMachineScaleSetCloudTable, AzureClient azureClient, TraceWriter log)
         {
             if (virtualMachineScaleSets == null || virtualMachineCloudTable == null || virtualMachineScaleSetCloudTable == null)
             {
@@ -104,7 +107,8 @@ namespace ChaosExecuter.Crawler
 
             var listOfScaleSetEntities = new ConcurrentBag<VirtualMachineScaleSetCrawlerResponse>();
             // get the batch operation for all the scale sets and corresponding virtual machine instances
-            Parallel.ForEach(virtualMachineScaleSets, eachVirtualMachineScaleSet =>
+            foreach (var eachVirtualMachineScaleSet in virtualMachineScaleSets)
+            //Parallel.ForEach(virtualMachineScaleSets, eachVirtualMachineScaleSet =>
             {
                 try
                 {
@@ -118,6 +122,7 @@ namespace ChaosExecuter.Crawler
 
                     // get the scale set instances
                     var virtualMachineList = eachVirtualMachineScaleSet.VirtualMachines.List();
+                    var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(eachVirtualMachineScaleSet.ResourceGroupName, azureClient, log);
                     // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
                     var virtualMachineScaleSetVms = virtualMachineList.ToList();
                     for (var i = 0; i < virtualMachineScaleSetVms.Count; i += TableConstants.TableServiceBatchMaximumOperations)
@@ -139,7 +144,8 @@ namespace ChaosExecuter.Crawler
                     log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
                         "GetVirtualMachineAndScaleSetBatch for the scale set: " + eachVirtualMachineScaleSet.Name);
                 }
-            });
+            }
+            //);
 
             // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
             for (var i = 0; i < listOfScaleSetEntities.Count; i += TableConstants.TableServiceBatchMaximumOperations)
@@ -201,6 +207,30 @@ namespace ChaosExecuter.Crawler
             }
 
             return virtualMachineScaleSetEntity;
+        }
+        /// <summary>Get the list of the load balancer virtual machines by resource group.</summary>
+        /// <param name="resourceGroup">The resource group name.</param>
+        /// <param name="azureClient"></param>
+        /// <param name="log">Trace writer instance</param>
+        /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
+        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, AzureClient azureClient, TraceWriter log)
+        {
+            log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
+            var virtualMachinesIds = new List<string>();
+            var pagedCollection = await azureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            if (pagedCollection == null)
+            {
+                return virtualMachinesIds;
+            }
+
+            var loadBalancers = pagedCollection.Select(x => x).ToList();
+            if (!loadBalancers.Any())
+            {
+                return virtualMachinesIds;
+            }
+
+            virtualMachinesIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
+            return virtualMachinesIds;
         }
     }
 }
