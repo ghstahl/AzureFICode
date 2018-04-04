@@ -85,8 +85,7 @@ namespace AzureChaos.Core.Interfaces
             {
                 return null;
             }
-
-            // TODO need to combine the schedule and activity table
+            
             var scheduleEntities = ResourceFilterHelper.QuerySchedulesByMeanTime<ScheduledRules>(azureClient.AzureSettings,
                 StorageTableNames.ScheduledRulesTableName);
             var scheduleEntitiesResourceIds = scheduleEntities == null || !scheduleEntities.Any() ? new List<string>() :

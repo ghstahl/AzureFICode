@@ -12,6 +12,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table.Protocol;
+using Microsoft.Azure.Management.Compute.Fluent;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -205,6 +206,7 @@ namespace AzureChaos.Core.Interfaces
 
             var virtualMachineTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(bootStrapQuery);
             var crawledVirtualMachineResults = StorageAccountProvider.GetEntities(virtualMachineTableQuery, StorageTableNames.VirtualMachineCrawlerTableName);
+            crawledVirtualMachineResults = crawledVirtualMachineResults.Where(x => PowerState.Parse(x.State) == PowerState.Running);
             foreach (var eachVirtualMachine in crawledVirtualMachineResults)
             {
                 string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;

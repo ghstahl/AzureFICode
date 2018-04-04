@@ -115,7 +115,7 @@ function appendActivityBody($tbody, existingData) {
     $chaosStartedTime.text(this.ChaosStartedTime);
 
     var $chaosCompletedTime = $("<td></td>");
-    $chaosCompletedTime.text(this.ChaosSCompletedTime);
+    $chaosCompletedTime.text(this.ChaosCompletedTime);
 
     var $initialState = $("<td></td>");
     $initialState.text(this.InitialState);
@@ -150,7 +150,7 @@ function appendScheduleBody($tbody, existingData) {
   if (!existingData || existingData.length === 0) {
     $tbody.html('');
     var $tr = $("<tr></tr>");
-    var $emptyRecord = $("<td colspan=7></td>");
+    var $emptyRecord = $("<td colspan=6></td>");
     $emptyRecord.text("No records found");
     $tr.append($emptyRecord);
     $tbody.append($tr);
@@ -170,9 +170,6 @@ function appendScheduleBody($tbody, existingData) {
     var $chaosOperation = $("<td></td>");
     $chaosOperation.text(this.ChaosOperation);
 
-    var $isRollBacked = $("<td></td>");
-    $isRollBacked.text(this.IsRollbacked);
-
     var $status = $("<td></td>");
     $status.text(this.Status);
 
@@ -180,7 +177,6 @@ function appendScheduleBody($tbody, existingData) {
     $tr.append($resourceName);
     $tr.append($scheduledTime);
     $tr.append($chaosOperation);
-    $tr.append($isRollBacked);
     $tr.append($status);
     $tbody.append($tr);
   });

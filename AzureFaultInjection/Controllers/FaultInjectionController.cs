@@ -245,25 +245,6 @@ namespace AzureFaultInjection.Controllers
                 var functionAppName = CommonName +
                     GetUniqueHash(model.ClientId + model.TenantId + model.Subscription);
 
-                var azureFunctions =
-                    azure.AppServices.FunctionApps.ListByResourceGroup(resourceGroupName);
-
-                // try to give the read and write permissions
-                if (azureFunctions != null && azureFunctions.Count() > 0)
-
-                {
-                    var functionApp = azureFunctions.FirstOrDefault(x => x.Name.Equals(functionAppName, StringComparison.OrdinalIgnoreCase));
-                    if (functionApp != null)
-                    {
-                        return new FaultInjectionResponseModel<ConfigModel>()
-                        {
-                            Success = true,
-                            SuccessMessage = "Configuration updated successfully",
-                            Result = model
-                        };
-                    }
-                }
-
                 // TODO: ask ? do we deploy the azure functions, whenever user do any changes in the  config?
                 if (!DeployAzureFunctions(model, functionAppName, storageConnection, resourceGroupName))
                 {
@@ -489,7 +470,7 @@ namespace AzureFaultInjection.Controllers
             {
                 ResourceName = scheduledRule.ResourceName,
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
-                ChaosOperation = triggerData.Action.ToString(),
+                ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 IsRollbacked = scheduledRule.Rollbacked,
                 Status = scheduledRule.ExecutionStatus
             };
@@ -497,12 +478,14 @@ namespace AzureFaultInjection.Controllers
 
         private static Activities ConvertToActivity(ScheduledRules scheduledRule)
         {
+            var triggerData = JsonConvert.DeserializeObject<InputObject>(scheduledRule.TriggerData);
+
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
                 ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
                 ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
-                ChaosOperation = scheduledRule.CurrentAction,
+                ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,
                 Status = scheduledRule.ExecutionStatus,
@@ -523,10 +506,11 @@ namespace AzureFaultInjection.Controllers
                 toDateTimeOffset = DateTimeOffset.UtcNow;
             }
 
-            return ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
+            var result = ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
                 toDateTimeOffset.ToUniversalTime(),
                 "ScheduledExecutionTime",
                 StorageTableNames.ScheduledRulesTableName);
+            return result?.OrderByDescending(x => x.ScheduledExecutionTime);
         }
     }
 }

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table.Protocol;
+using Microsoft.Azure.Management.Compute.Fluent;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -91,7 +92,7 @@ namespace AzureChaos.Core.Interfaces
             {
                 return null;
             }
-
+            
             var random = new Random();
             var randomScaleSetIndex = random.Next(0, resultsSet.Count);
             return resultsSet.ToArray()[randomScaleSetIndex];
@@ -107,6 +108,7 @@ namespace AzureChaos.Core.Interfaces
             var groupNameFilter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey);
             var resultsSet = ResourceFilterHelper.QueryCrawlerResponseByMeanTime<VirtualMachineCrawlerResponse>(azureClient.AzureSettings,
                 StorageTableNames.VirtualMachineCrawlerTableName, groupNameFilter);
+            resultsSet = resultsSet.Where(x => PowerState.Parse(x.State) == PowerState.Running).ToList();
             if (resultsSet == null || !resultsSet.Any())
             {
                 return null;

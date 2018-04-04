@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table.Protocol;
+using Microsoft.Azure.Management.Compute.Fluent;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -33,7 +34,7 @@ namespace AzureChaos.Core.Interfaces
                 var recentlyExecutedAvailabilityZoneRegionCombination = GetRecentlyExecutedAvailabilityZoneRegionCombination();
                 var avilabilityZoneRegionCombinations = possibleAvailabilityZoneRegionCombinations.Except(recentlyExecutedAvailabilityZoneRegionCombination);
                 var avilabilityZoneRegionCombinationsList = avilabilityZoneRegionCombinations.ToList();
-                if(avilabilityZoneRegionCombinationsList.Count == 0)
+                if (avilabilityZoneRegionCombinationsList.Count == 0)
                 {
                     return;
                 }
@@ -149,6 +150,7 @@ namespace AzureChaos.Core.Interfaces
             var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(availabilityZoneTableQuery,
                 StorageTableNames.VirtualMachineCrawlerTableName);
 
+            crawledVirtualMachinesResults = crawledVirtualMachinesResults.Where(x => PowerState.Parse(x.State) == PowerState.Running);
             foreach (var eachCrawledVirtualMachinesResult in crawledVirtualMachinesResults)
             {
                 var entryIntoPossibleAvailabilityZoneRegionCombinationVmCount =

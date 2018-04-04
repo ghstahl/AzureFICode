@@ -22,7 +22,7 @@ namespace AzureChaos.Core.Helper
             }
             
             return blackListedResourceGroupList?.Count > 0
-                ? resourceGroups.Where(x => !blackListedResourceGroupList.Contains(x.Name,
+                ? resourceGroups.Where(x => !blackListedResourceGroupList.Contains(x.Id,
                         StringComparer.OrdinalIgnoreCase))
                     .ToList()
                 : resourceGroups.ToList();

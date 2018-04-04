@@ -15,7 +15,7 @@ var app = {
     this.startOver();
     // this.editForm();
     this.killEnterKey();
-    this.handleStepClicks();
+    // this.handleStepClicks();
   },
 
   cacheDOM: function () {

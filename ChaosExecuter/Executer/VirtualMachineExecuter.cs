@@ -225,7 +225,8 @@ namespace ChaosExecuter.Executer
         /// <returns>Returns the virtual machine.</returns>
         private static IVirtualMachine GetVirtualMachine(IAzure azure, InputObject inputObject)
         {
-            return azure.VirtualMachines.GetByResourceGroup(inputObject.ResourceGroup, inputObject.ResourceId);
+            var id = inputObject.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
+            return azure.VirtualMachines.GetById(id);
         }
     }
 }

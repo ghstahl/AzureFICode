@@ -23,6 +23,8 @@ namespace AzureChaos.Core.Constants
             { VirtualMachineGroup.VirtualMachineScaleSets.ToString(), "virtualmachinescalesetexecuter" },
             { VirtualMachineGroup.AvailabilitySets.ToString(), "virtualmachinesexecuter" },
             { VirtualMachineGroup.AvailabilityZones.ToString(), "virtualmachinesexecuter" },
+            { VirtualMachineGroup.AvailabilityZones.ToString() + VirtualMachineGroup.VirtualMachineScaleSets.ToString(),
+                "virtualmachinescalesetexecuter" },
         };
 
         ///Microsoft subscription blob endpoint for configs:  https://chaostest.blob.core.windows.net/config/azuresettings.json

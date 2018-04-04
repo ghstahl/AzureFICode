@@ -10,7 +10,9 @@
   $('#tooltip-scheduler-frequency').attr("title", "Time between AzureFI initiating fault operations.");
   $('#tooltip-rollback-frequency').attr("title", "Time between powering off and powering on a Virtual Machine.");
   $('#tooltip-crawler-frequency').attr("title", "Time between AzureFI crawl operations to identify new resources in the selected Resource Groups.");
-  $('#tooltip-meanTime').attr("title", "Time between a specific Virtual Machine picked for fault injection operations.");
+  $('#tooltip-meantime').attr("title", "Time between a specific Virtual Machine picked for fault injection operations.");
+  $('#tooltip-availability-sets').attr("title", "All vm instances belonging to particular fault or update domain subjected to chosen fault operations simultaneously.");
+  $('#tooltip-availability-zones').attr("title", "All vm instances in a zone subjected to chosen fault operations simultaneously.");
 
   //$('[data-toggle="tooltip"]').tooltip();
 })

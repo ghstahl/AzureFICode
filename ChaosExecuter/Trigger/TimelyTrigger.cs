@@ -57,12 +57,18 @@ namespace ChaosExecuter.Trigger
             foreach (var result in scheduledRules)
             {
                 var partitionKey = result.ResourceType.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
+                //Bug - need to map the vmss vm in the availability zone to vmscaleset executer
                 if (!Mappings.FunctionNameMap.ContainsKey(partitionKey))
                 {
                     continue;
                 }
 
-                var functionName = Mappings.FunctionNameMap[partitionKey];
+                var functionMapName = (partitionKey.Equals(VirtualMachineGroup.AvailabilityZones.ToString(), StringComparison.OrdinalIgnoreCase)
+                  && result.RowKey.ToLowerInvariant().Contains(VirtualMachineGroup.VirtualMachineScaleSets.ToString().ToLowerInvariant()) ?
+                  VirtualMachineGroup.AvailabilityZones.ToString() + VirtualMachineGroup.VirtualMachineScaleSets.ToString()
+                  : partitionKey);
+
+                var functionName = Mappings.FunctionNameMap[functionMapName];
                 log.Info($"Timely trigger: invoking function: {functionName}");
                 var triggeredData = JsonConvert.DeserializeObject<InputObject>(result.TriggerData);
                 tasks.Add(starter.StartNewAsync(functionName, result.TriggerData));
@@ -83,7 +89,11 @@ namespace ChaosExecuter.Trigger
                     triggeredData.EnableRollback = true;
                 }
 
-                var functionName = Mappings.FunctionNameMap[partitionKey];
+                var functionMapName = (partitionKey.Equals(VirtualMachineGroup.AvailabilityZones.ToString(), StringComparison.OrdinalIgnoreCase)
+                    && result.RowKey.Contains(VirtualMachineGroup.VirtualMachineScaleSets.ToString()) ?
+                    VirtualMachineGroup.AvailabilityZones.ToString() + VirtualMachineGroup.VirtualMachineScaleSets.ToString()
+                    : partitionKey);
+                var functionName = Mappings.FunctionNameMap[functionMapName];
                 log.Info($"Timely trigger: invoking function: {functionName}");
                 tasks.Add(starter.StartNewAsync(functionName, JsonConvert.SerializeObject(triggeredData)));
             }

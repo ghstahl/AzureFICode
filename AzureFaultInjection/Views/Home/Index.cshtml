@@ -51,7 +51,7 @@
     <fieldset aria-label="Step Three" tabindex="-1" id="step-3">
       <div class="panel-group panel panel-default">
         <div class="panel-heading">
-          <h4 class="panel-title">Virtual Machines</h4>
+          <h4 class="panel-title">Single Virtual Machines</h4>
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
@@ -60,18 +60,18 @@
           </div>
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isVmEnabled" id="vm-enabled">
-            <label for="vm-enabled">Enable</label>
+            <label for="vm-enabled">Allow Fault Injection</label>
           </div>
         </div>
       </div>
       <div class="panel-group panel panel-default">
         <div class="panel-heading">
-          <h4 class="panel-title">Availability Sets</h4>
+          <h4 class="panel-title">Availability Sets<div class="glyphicon glyphicon-question-sign" id="tooltip-availability-sets"></div></h4>
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isAvSetEnabled" id="avset-enabled">
-            <label for="avset-enabled">Enable</label>
+            <label for="avset-enabled">Allow Fault Injection</label>
           </div>
           <div class="form-inline">
             <input type="radio" class="form-check-input" name="isFaultOrUpdateDomainEnabled" id="isFaultDomainEnabled">
@@ -83,18 +83,18 @@
       </div>
       <div class="panel-group panel panel-default">
         <div class="panel-heading">
-          <h4 class="panel-title">Availability Zones</h4>
+          <h4 class="panel-title">Availability Zones(VM(s) and VMSS)<div class="glyphicon glyphicon-question-sign" id="tooltip-availability-zones"></div></h4>
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isAvZoneEnabled" id="avzone-enabled">
-            <label for="avzone-enabled">Enable</label>
+            <label for="avzone-enabled">Allow Fault Injection</label>
           </div>
         </div>
       </div>
       <div class="panel-group panel panel-default">
         <div class="panel-heading">
-          <h4 class="panel-title">Virtual Machine Scale Sets</h4>
+          <h4 class="panel-title">Regional Virtual Machine Scale Sets</h4>
         </div>
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
@@ -103,7 +103,7 @@
           </div>
           <div class="form-inline">
             <input type="checkbox" class="form-check-input" name="isVmssEnabled" id="vmss-enabled">
-            <label for="vmss-enabled">Enable</label>
+            <label for="vmss-enabled">Allow Fault Injection</label>
           </div>
         </div>
       </div>
@@ -125,7 +125,7 @@
         <div class="panel-collapse collapse in panel-body">
           <div class="section">
             <label for="scheduler-frequency">Scheduler Frequency</label><div class="glyphicon glyphicon-question-sign" id="tooltip-scheduler-frequency"></div>
-            <input type="number" class="form-control" value="60" name="schedulerFrequency" id="scheduler-frequency" required>
+            <input type="number" class="form-control" value="20" name="schedulerFrequency" id="scheduler-frequency" required>
           </div>
           <div class="section">
             <label for="rollback-frequency">Power Cycle Schedule</label><div class="glyphicon glyphicon-question-sign" id="tooltip-rollback-frequency"></div>
@@ -133,7 +133,7 @@
           </div>
           <div class="section">
             <label for="crawler-frequency">Crawler Frequency</label><div class="glyphicon glyphicon-question-sign" id="tooltip-crawler-frequency"></div>
-            <input type="number" class="form-control" value="15" name="crawlerFrequency" id="crawler-frequency" required>
+            <input type="number" class="form-control" value="60" name="crawlerFrequency" id="crawler-frequency" required>
           </div>
           <div class="section">
             <label for="mean-time">Meantime between FI on a VM</label><div class="glyphicon glyphicon-question-sign" id="tooltip-meantime"></div>
