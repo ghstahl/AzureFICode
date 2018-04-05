@@ -58,6 +58,11 @@ namespace ChaosExecuter.Schedulers
                     availabilityZone.CreateRule(log);
                     break;
 
+                case VirtualMachineGroup.LoadBalancer:
+                    log.Info("C# RuleEngine: LoadBalancer Rule engine got picked");
+                    IRuleEngine loadBalancer = new LoadBalancerRuleEngine();
+                    loadBalancer.CreateRule(log);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
