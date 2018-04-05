@@ -13,7 +13,8 @@ namespace AzureChaos.Core.Constants
                 { VirtualMachineGroup.AvailabilitySets, azureSettings.Chaos.AvailabilitySetChaos.Enabled},
                 { VirtualMachineGroup.VirtualMachines, azureSettings.Chaos.VirtualMachineChaos.Enabled},
                 { VirtualMachineGroup.AvailabilityZones, azureSettings.Chaos.AvailabilityZoneChaos.Enabled},
-                { VirtualMachineGroup.VirtualMachineScaleSets, azureSettings.Chaos.ScaleSetChaos.Enabled}
+                { VirtualMachineGroup.VirtualMachineScaleSets, azureSettings.Chaos.ScaleSetChaos.Enabled},
+                { VirtualMachineGroup.LoadBalancer, azureSettings.Chaos.LoadBalancerChaos.Enabled}
             };
         }
 
@@ -25,6 +26,7 @@ namespace AzureChaos.Core.Constants
             { VirtualMachineGroup.AvailabilityZones.ToString(), "virtualmachinesexecuter" },
             { VirtualMachineGroup.AvailabilityZones.ToString() + VirtualMachineGroup.VirtualMachineScaleSets.ToString(),
                 "virtualmachinescalesetexecuter" },
+            { VirtualMachineGroup.LoadBalancer.ToString(), "virtualmachinesexecuter" },
         };
 
         ///Microsoft subscription blob endpoint for configs:  https://chaostest.blob.core.windows.net/config/azuresettings.json

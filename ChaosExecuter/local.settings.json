@@ -3,6 +3,6 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true", // use UseDevelopmentStorage=true to debug locally
     "AzureWebJobsDashboard": "",
-    "ConfigStorageConnectionString": "DefaultEndpointsProtocol=https;AccountName=stachaosstorage;AccountKey=xe0PHJ/aCnokHDF7CzziW/QXFUj4xLKe9iW/SxWeG4gabsRrKeE94Y0NgdfKb0im05IMiYGyvCdvAqD+PVNVgw==;EndpointSuffix=core.windows.net"
+    "ConfigStorageConnectionString": "DefaultEndpointsProtocol=https;AccountName=azurefaultinjectionzen3;AccountKey=k6z0V0LXU3eudxIyiJs0N2bQlQwklx7P6qgHMxn1SG/iVP2/e+JG28VYpEVrbPy0luxXSQUb0RYNuGcX9ECuYQ==;EndpointSuffix=core.windows.net"
   }
 }

@@ -11,5 +11,6 @@
         public const string VirtualMachinesScaleSetCrawlerTableName = "tblchaosscalesets";
         public const string AvailabilityZoneCrawlerTableName = "tblchaosavailabilityzone";
         public const string ScheduledRulesTableName = "tblchaosscheduledrules";
+        public const string LoadBalancerCrawlerTableName = "tblchaosloadbalancergroup";
     }
 }

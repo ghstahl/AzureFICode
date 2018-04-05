@@ -42,6 +42,9 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.faultinjection.AvSets")]
         public AvailabilitySetChaosConfig AvailabilitySetChaos { get; set; }
 
+        [JsonProperty("microsoft.faultinjection.LB")]
+        public LoadBalancerChaosConfig LoadBalancerChaos { get; set; }
+
         [JsonProperty("microsoft.faultinjection.VmSS")]
         public ScaleSetChaosConfig ScaleSetChaos { get; set; }
 
