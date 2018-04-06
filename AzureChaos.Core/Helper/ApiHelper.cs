@@ -163,6 +163,14 @@ namespace AzureChaos.Core.Helper
                 writer.WriteValue(queryParams.VmssPercentage);
                 writer.WriteEndObject();
 
+                writer.WritePropertyName(Mappings.loadBalancerObject);
+                writer.WriteStartObject();
+                writer.WritePropertyName(Mappings.loadBalancerEnabled);
+                writer.WriteValue(queryParams.IsLoadbalancerEnabled);
+                writer.WritePropertyName(Mappings.loadBalancerTerminationPercentage);
+                writer.WriteValue(queryParams.LoadBalancerPercentage);
+                writer.WriteEndObject();
+
                 writer.WritePropertyName(Mappings.AvSetObject);
                 writer.WriteStartObject();
                 writer.WritePropertyName(Mappings.AvSetEnabled);

@@ -54,6 +54,11 @@ namespace AzureChaos.Core.Models
         [JsonProperty("vmssPercentage")]
         public decimal VmssPercentage { get; set; }
 
+        [JsonProperty("isLoadbalancerEnabled")] public bool IsLoadbalancerEnabled { get; set; }
+
+        [JsonProperty("loadbalancerPercentage")]
+        public decimal LoadBalancerPercentage { get; set; }
+
         [JsonProperty("isAvSetEnabled")] public bool IsAvSetEnabled { get; set; }
 
         [JsonProperty("isFaultDomainEnabled")]

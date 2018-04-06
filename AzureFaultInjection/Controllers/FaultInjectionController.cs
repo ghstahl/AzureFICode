@@ -316,6 +316,9 @@ namespace AzureFaultInjection.Controllers
                 VmssPercentage = settings.Chaos.ScaleSetChaos.PercentageTermination,
                 IsVmssEnabled = settings.Chaos.ScaleSetChaos.Enabled,
 
+                LoadBalancerPercentage = settings.Chaos.LoadBalancerChaos.PercentageTermination,
+                IsLoadbalancerEnabled = settings.Chaos.LoadBalancerChaos.Enabled,
+
                 IsVmEnabled = settings.Chaos.VirtualMachineChaos.Enabled,
                 VmPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination,
 

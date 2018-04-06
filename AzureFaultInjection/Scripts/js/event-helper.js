@@ -248,6 +248,8 @@ function bindExistingConfig(model, resourceGroups) {
     $("#avzone-enabled")[0].checked = model.isAvZoneEnabled;
     $("#vmss-percentage")[0].value = model.vmssPercentage;
     $("#vmss-enabled")[0].checked = model.isVmssEnabled;
+    $("#loadbalancer-percentage")[0].value = model.loadbalancerPercentage;
+    $("#loadbalancer-enabled")[0].checked = model.isLoadbalancerEnabled;
     $("#scheduler-frequency")[0].value = model.schedulerFrequency;
     $("#rollback-frequency")[0].value = model.rollbackFrequency;
     $("#crawler-frequency")[0].value = model.crawlerFrequency;

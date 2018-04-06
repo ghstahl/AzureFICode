@@ -18,9 +18,6 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.faultinjection.rollback.frequency")]
         public int RollbackRunFrequency { get; set; }
 
-        [JsonProperty("microsoft.faultinjection.trigger.frequency")]
-        public int TriggerFrequency { get; set; }
-
         [JsonProperty("microsoft.faultinjection.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 

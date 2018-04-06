@@ -13,6 +13,7 @@
   $('#tooltip-meantime').attr("title", "Time between a specific Virtual Machine picked for fault injection operations.");
   $('#tooltip-availability-sets').attr("title", "All vm instances belonging to particular fault or update domain subjected to chosen fault operations simultaneously.");
   $('#tooltip-availability-zones').attr("title", "All vm instances in a zone subjected to chosen fault operations simultaneously.");
+  $('#tooltip-loadbalancer-percentage').attr("title", "% of vm instances behind a load balancer subjected to fault injection operations simultaneously.");
 
   //$('[data-toggle="tooltip"]').tooltip();
 })

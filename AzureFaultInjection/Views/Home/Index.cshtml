@@ -107,10 +107,24 @@
           </div>
         </div>
       </div>
+      <div class="panel-group panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">Virtual Machines behind load balancer</h4>
+        </div>
+        <div class="panel-collapse collapse in panel-body">
+          <div class="section">
+            <label for="loadbalancer-percentage">Loadbalancer VM instance Percentage</label><div class="glyphicon glyphicon-question-sign" id="tooltip-loadbalancer-percentage"></div>
+            <input type="number" class="form-control" value="50" min="0" max="100" name="loadbalancerPercentage" id="loadbalancer-percentage" required>
+          </div>
+          <div class="form-inline">
+            <input type="checkbox" class="form-check-input" name="isLoadbalancerEnabled" id="loadbalancer-enabled">
+            <label for="loadbalancer-enabled">Allow Fault Injection</label>
+          </div>
+        </div>
+      </div>
       <div class="section">
         <label for="azure-fault-injection-actions">Azure FI Actions</label><span class="required">*</span><div class="glyphicon glyphicon-question-sign" id="tooltip-azure-fault-injection-actions"></div>
-        <select class="form-control" multiple="multiple" id="azure-fault-injection-actions" name="azureFiActions"  required>
-       </select>
+        <select class="form-control" multiple="multiple" id="azure-fault-injection-actions" name="azureFiActions" required></select>
       </div>
       <div class="button-overlap">
         <button class="btn btn-default btn-prev" type="button" aria-controls="step-2">Previous</button>

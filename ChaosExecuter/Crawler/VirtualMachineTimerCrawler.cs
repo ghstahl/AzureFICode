@@ -101,7 +101,7 @@ namespace ChaosExecuter.Crawler
             try
             {
                 var azureClient = new AzureClient();
-                var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, azureClient);
+                var loadBalancersVirtualMachines = VirtualMachineHelper.GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, azureClient);
                 var pagedCollection =
                     azureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
                 var tasks = new List<Task>

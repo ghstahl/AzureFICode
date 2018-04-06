@@ -1,12 +1,13 @@
-﻿using AzureChaos.Core.Entity;
-using AzureChaos.Core.Constants;
+﻿using AzureChaos.Core.Constants;
+using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
+using AzureChaos.Core.Models;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AzureChaos.Core.Models.Configs;
+using System.Threading.Tasks;
 
 namespace AzureChaos.Core.Helper
 {
@@ -254,6 +255,29 @@ namespace AzureChaos.Core.Helper
             }
 
             return ActionType.Unknown;
+        }
+
+        /// <summary>Get the list of the load balancer virtual machines by resource group.</summary>
+        /// <param name="resourceGroup">The resource group name.</param>
+        /// <param name="azureClient"></param>
+        /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
+        public static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, AzureClient azureClient)
+        {
+            var virtualMachinesIds = new List<string>();
+            var pagedCollection = await azureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            if (pagedCollection == null)
+            {
+                return virtualMachinesIds;
+            }
+
+            var loadBalancers = pagedCollection.Select(x => x).ToList();
+            if (!loadBalancers.Any())
+            {
+                return virtualMachinesIds;
+            }
+
+            virtualMachinesIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
+            return virtualMachinesIds;
         }
     }
 }

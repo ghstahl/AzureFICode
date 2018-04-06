@@ -63,8 +63,7 @@ namespace ChaosExecuter.Crawler
                 var batchTasks = new ConcurrentBag<Task>();
                 var azureClient = new AzureClient();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
-                foreach (var eachResourceGroup in resourceGroups)
-                //Parallel.ForEach(resourceGroups, eachResourceGroup =>
+                Parallel.ForEach(resourceGroups, eachResourceGroup =>
                 {
                     try
                     {
@@ -85,8 +84,7 @@ namespace ChaosExecuter.Crawler
                         log.Error($"timercrawlerforloadbalancer threw the exception ", e,
                             "GetLoadBalancerForResourceGroups: for the resource group " + eachResourceGroup.Name);
                     }
-                }
-                //);
+                });
 
                 // execute all batch operation as parallel
                 await Task.WhenAll(batchTasks);
@@ -116,21 +114,22 @@ namespace ChaosExecuter.Crawler
             }
 
             var listOfLoadBalancerEntities = new ConcurrentBag<LoadBalancerCrawlerResponse>();
+
             // get the batch operation for all the load balancers and corresponding virtual machine instances
             foreach (var eachLoadBalancer in loadBalancers)
             //Parallel.ForEach(loadBalancers, eachLoadBalancer =>
             {
                 try
                 {
-                    listOfLoadBalancerEntities.Add(ConvertToLoadBalancerCrawlerResponse(eachLoadBalancer, azureClient,log));
-                    var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(eachLoadBalancer.ResourceGroupName, eachLoadBalancer.Name, azureClient, log);
+                    listOfLoadBalancerEntities.Add(ConvertToLoadBalancerCrawlerResponse(eachLoadBalancer, azureClient, log));
+                    var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(eachLoadBalancer.ResourceGroupName, eachLoadBalancer.Id, azureClient, log);
                     var tasks = new List<Task>
                                 {
                                     loadBalancersVirtualMachines
                                 };
                     Task.WhenAll(tasks);
                     var virtualMachineIds = loadBalancersVirtualMachines.Result;
-                    var virtualMachinesBatchOperation =InsertLoadBalancerVirtualMachines(virtualMachineIds, eachLoadBalancer, azureClient, log);
+                    var virtualMachinesBatchOperation = InsertLoadBalancerVirtualMachines(virtualMachineIds, eachLoadBalancer, azureClient, log);
                     if (virtualMachinesBatchOperation != null && virtualMachinesBatchOperation.Count > 0)
                     {
                         batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachinesBatchOperation));
@@ -188,23 +187,27 @@ namespace ChaosExecuter.Crawler
             foreach (var eachvirtualMachineId in virtualMachineIds)
             {
                 var virtualMachine = azureClient.AzureInstance.VirtualMachines.GetById(eachvirtualMachineId);
+                var partitionKey = eachLoadBalancer.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
                 virtualMachineBatchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntityFromLB(virtualMachine,
-                                                                                  eachLoadBalancer.Name, VirtualMachineGroup.LoadBalancer.ToString()));
+                                                                                  partitionKey, VirtualMachineGroup.LoadBalancer.ToString()));
             }
+
             return virtualMachineBatchOperation;
         }
 
         private static LoadBalancerCrawlerResponse ConvertToLoadBalancerCrawlerResponse(ILoadBalancer loadBalancer, AzureClient azureClient, TraceWriter log)
         {
-            var loadBalancerEntity = new LoadBalancerCrawlerResponse(loadBalancer.ResourceGroupName, loadBalancer.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
+            var loadBalancerEntity = new LoadBalancerCrawlerResponse(loadBalancer.ResourceGroupName,
+                loadBalancer.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
                 ResourceName = loadBalancer.Name,
                 RegionName = loadBalancer.RegionName,
                 Id = loadBalancer.Id
             };
+
             //var loadBalancerList = new List<ILoadBalancer>();
             //loadBalancer.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds());
-            var lbtest = GetVirtualMachinesFromLoadBalancers(loadBalancer.ResourceGroupName, loadBalancer.Name, azureClient,log);
+            var lbtest = GetVirtualMachinesFromLoadBalancers(loadBalancer.ResourceGroupName, loadBalancer.Name, azureClient, log);
             var tasks = new List<Task>
                                 {
                                     lbtest
@@ -223,23 +226,17 @@ namespace ChaosExecuter.Crawler
         /// <param name="azureClient"></param>
         /// <param name="log">Trace writer instance</param>
         /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
-        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, string loadBalancer, AzureClient azureClient, TraceWriter log)
+        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, string id, AzureClient azureClient, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
             var virtualMachinesIds = new List<string>();
-            var pagedCollection = await azureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
-            if (pagedCollection == null)
+            var loadBalancer = await azureClient.AzureInstance.LoadBalancers.GetByIdAsync(id);
+            if (loadBalancer == null)
             {
                 return virtualMachinesIds;
             }
 
-            var loadBalancers = pagedCollection.Select(x => x).ToList();
-            if (!loadBalancers.Any())
-            {
-                return virtualMachinesIds;
-            }
-
-            virtualMachinesIds.AddRange(loadBalancers.Where(x => x.Name.Equals(loadBalancer)).SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
+            virtualMachinesIds.AddRange(loadBalancer.Backends.SelectMany(x => x.Value.GetVirtualMachineIds()));
             return virtualMachinesIds;
         }
 

@@ -62,6 +62,9 @@ namespace AzureChaos.Core.Constants
         public const string VmssObject = "microsoft.faultinjection.VmSS";
         public const string VmssEnabled = "microsoft.faultinjection.VmSS.enabled";
         public const string VmssTerminationPercentage = "microsoft.faultinjection.VmSS.percentageTermination";
+        public const string loadBalancerObject = "microsoft.faultinjection.LB";
+        public const string loadBalancerEnabled = "microsoft.faultinjection.LB.enabled";
+        public const string loadBalancerTerminationPercentage = "microsoft.faultinjection.LB.percentageTermination";
         public const string AvSetObject = "microsoft.faultinjection.AvSets";
         public const string AvSetEnabled = "microsoft.faultinjection.AvSets.enabled";
         public const string AvSetFaultDomainEnabled = "microsoft.faultinjection.AvSets.faultDomain.enabled";
