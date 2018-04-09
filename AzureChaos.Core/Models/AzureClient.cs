@@ -124,6 +124,8 @@ namespace AzureChaos.Core.Models
                     return chaosEnabled && AzureSettings.Chaos.AvailabilityZoneChaos.Enabled;
                 case VirtualMachineGroup.VirtualMachineScaleSets:
                     return chaosEnabled && AzureSettings.Chaos.ScaleSetChaos.Enabled;
+                case VirtualMachineGroup.LoadBalancer:
+                    return chaosEnabled && AzureSettings.Chaos.LoadBalancerChaos.Enabled;
             }
 
             return false;

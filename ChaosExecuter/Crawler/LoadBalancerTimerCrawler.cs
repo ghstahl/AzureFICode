@@ -1,12 +1,6 @@
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using AzureChaos.Core.Constants;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host;
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
@@ -15,19 +9,22 @@ using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Network.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table.Protocol;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using AzureChaos.Core.Constants;
+using System.Collections.Concurrent;
+using System.Linq;
 
 namespace ChaosExecuter.Crawler
 {
-    public static class LoadBalancerCrawler
+    public static class LoadBalancerTimerCrawler
     {
-        [FunctionName("LoadBalancerCrawler")]
-        public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
-            HttpRequestMessage req, TraceWriter log)
+        [FunctionName("LoadBalancerTimerCrawler")]
+        public static async System.Threading.Tasks.Task RunAsync([TimerTrigger("%CrawlerFrequency%")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info("timercrawlerforloadbalancers function processed a request.");
             var sw = Stopwatch.StartNew();//Recording

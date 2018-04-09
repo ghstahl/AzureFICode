@@ -29,7 +29,7 @@ namespace AzureChaos.Core.Interfaces
                     return;
                 }
 
-                var filteredVmSet = GetVirtualMachineSet(loadBalancer.Id);
+                var filteredVmSet = GetVirtualMachineSet(loadBalancer.ResourceName);
                 if (filteredVmSet == null)
                 {
                     log.Info("Loadbalancer RuleEngine: No virtual machines found for the load balancer name: " + loadBalancer.ResourceName);
@@ -55,6 +55,7 @@ namespace AzureChaos.Core.Interfaces
                     {
                         var batchItems = randomSets.Skip(i)
                             .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+
                         var batchOperation = VirtualMachineHelper.CreateScheduleEntity(batchItems,
                             _azureClient.AzureSettings.Chaos.SchedulerFrequency,
                             _azureClient.AzureSettings.Chaos.AzureFaultInjectionActions,
@@ -81,8 +82,14 @@ namespace AzureChaos.Core.Interfaces
         private int VmCount(int totalCount)
         {
             var vmPercentage = _azureClient.AzureSettings?.Chaos?.LoadBalancerChaos?.PercentageTermination;
-
-            return vmPercentage == null ? totalCount : (int)(vmPercentage / 100 * totalCount);
+            if (totalCount == 1)
+            {
+                return 1;
+            }
+            else
+            {
+                return vmPercentage == null ? totalCount : (int)(vmPercentage / 100 * totalCount);
+            }
         }
 
         /// <summary>Pick the random scale set.</summary>
@@ -109,8 +116,8 @@ namespace AzureChaos.Core.Interfaces
         /// <returns></returns>
         private IList<VirtualMachineCrawlerResponse> GetVirtualMachineSet(string loadBalancerId)
         {
-            var partitionKey = loadBalancerId.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
-            var groupNameFilter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey);
+            //var partitionKey = loadBalancerId.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
+            var groupNameFilter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, loadBalancerId);
             var resultsSet = ResourceFilterHelper.QueryCrawlerResponseByMeanTime<VirtualMachineCrawlerResponse>(_azureClient.AzureSettings,
                 StorageTableNames.VirtualMachineCrawlerTableName, groupNameFilter);
             resultsSet = resultsSet.Where(x => PowerState.Parse(x.State) == PowerState.Running).ToList();
