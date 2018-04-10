@@ -272,7 +272,7 @@ namespace ChaosExecuter.Executer
         {
             if (enableRollback)
             {
-                scheduledRules.RollbackInitialState = Status.Started.ToString();
+                scheduledRules.RollbackInitialState = virtualMachine.PowerState.Value;
                 scheduledRules.RollbackExecutionStartTime = DateTime.UtcNow;
             }
             else
