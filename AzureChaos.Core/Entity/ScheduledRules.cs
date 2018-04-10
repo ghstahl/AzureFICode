@@ -13,7 +13,7 @@ namespace AzureChaos.Core.Entity
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
-
+        
         // Keeping the resource name for reporting purpose
         public string ResourceName { get; set; }
 

@@ -128,13 +128,27 @@ namespace AzureChaos.Core.Helper
                     continue;
                 }
 
-                var fiOperation = GetAzureFiOperation(azureFiOperationList);
+                var items = ResourceFilterHelper.QueryByRowKey<ScheduledRules>(item.RowKey, StorageTableNames.ScheduledRulesTableName);
+                ActionType actionType;
+                string fiOperation = string.Empty;
+                if (items != null || items.Any())
+                {
+                    var latestItem = items.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                    if (latestItem != null)
+                    {
+                        var excludeActionType = latestItem.CurrentAction;
+                        var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
+                        azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
+                    }
+                }
+
+                fiOperation = GetAzureFiOperation(azureFiOperationList);
                 if (string.IsNullOrWhiteSpace(fiOperation))
                 {
                     continue;
                 }
 
-                var actionType = GetActionTobePerformed(item.State, fiOperation);
+                actionType = GetActionTobePerformed(item.State, fiOperation);
                 if (actionType == ActionType.Unknown)
                 {
                     continue;
@@ -151,7 +165,7 @@ namespace AzureChaos.Core.Helper
             return tableBatchOperation;
         }
 
-        public static TableBatchOperation CreateScheduleEntityForAvailabilityZone(IList<VirtualMachineCrawlerResponse> filteredVmSet, 
+        public static TableBatchOperation CreateScheduleEntityForAvailabilityZone(IList<VirtualMachineCrawlerResponse> filteredVmSet,
             int schedulerFrequency, List<string> azureFiOperationList)
         {
             var tableBatchOperation = new TableBatchOperation();
@@ -172,15 +186,15 @@ namespace AzureChaos.Core.Helper
                     continue;
                 }
 
-                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone(item, 
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone(item,
                     sessionId, actionType, fiOperation, randomExecutionDateTime));
             }
 
             return tableBatchOperation;
         }
 
-        public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponse> filteredVmSet, 
-            int schedulerFrequency, List<string> azureFiOperationList,  bool domainFlage)
+        public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponse> filteredVmSet,
+            int schedulerFrequency, List<string> azureFiOperationList, bool domainFlage)
         {
             var tableBatchOperation = new TableBatchOperation();
             var random = new Random();
@@ -200,7 +214,7 @@ namespace AzureChaos.Core.Helper
                     continue;
                 }
 
-                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet(item, 
+                tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet(item,
                     sessionId, actionType, fiOperation, randomExecutionDateTime, domainFlage));
             }
 
