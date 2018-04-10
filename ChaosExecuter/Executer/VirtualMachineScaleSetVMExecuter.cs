@@ -28,10 +28,15 @@ namespace ChaosExecuter.Executer
             }
 
             var azureClient = new AzureClient();
-            var scheduleRule = new ScheduledRules(inputObject.PartitionKey, inputObject.RowKey)
+            var scheduleRule = new ScheduledRules(inputObject.PartitionKey, inputObject.RowKey);
+            if (inputObject.EnableRollback)
             {
-                ExecutionStatus = Status.Started.ToString()
-            };
+                scheduleRule.RollbackExecutionStatus = Status.Started.ToString();
+            }
+            else
+            {
+                scheduleRule.ExecutionStatus = Status.Started.ToString();
+            }
             try
             {
                 var scaleSetVm = await GetVirtualMachineScaleSetVm(azureClient.AzureInstance, inputObject, log);
@@ -44,28 +49,55 @@ namespace ChaosExecuter.Executer
                 log.Info($"VM ScaleSet Chaos received the action: " + inputObject.Action +
                          " for the virtual machine: " + inputObject.ResourceId);
 
-                SetInitialEventActivity(scaleSetVm, scheduleRule);
+                SetInitialEventActivity(scaleSetVm, scheduleRule, inputObject.EnableRollback);
 
                 // if its not valid chaos then update the event table with  warning message and return the bad request response
                 bool isValidChaos = IsValidChaos(inputObject.Action, scaleSetVm.PowerState);
                 if (!isValidChaos)
                 {
                     log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
-                    scheduleRule.ExecutionStatus = Status.Failed.ToString();
-                    scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                    if (inputObject.EnableRollback)
+                    {
+                        scheduleRule.RollbackExecutionStatus = Status.Failed.ToString();
+                        scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                    }
+                    else
+                    {
+                        scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                        scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                    }
+
                     StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                     return false;
                 }
 
-                scheduleRule.ExecutionStatus = Status.Started.ToString();
+                if (inputObject.EnableRollback)
+                {
+                    scheduleRule.RollbackExecutionStatus = Status.Started.ToString();
+                }
+                else
+                {
+                    scheduleRule.ExecutionStatus = Status.Started.ToString();
+                }
+
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
-                await PerformChaos(inputObject.Action, scaleSetVm, scheduleRule);
+                await PerformChaos(inputObject.Action, scaleSetVm, scheduleRule, inputObject.EnableRollback);
                 scaleSetVm = await scaleSetVm.RefreshAsync();
                 if (scaleSetVm != null)
                 {
-                    scheduleRule.EventCompletedTime = DateTime.UtcNow;
-                    scheduleRule.FinalState = scaleSetVm.PowerState.Value;
-                    scheduleRule.ExecutionStatus = Status.Completed.ToString();
+                    if (inputObject.EnableRollback)
+                    {
+                        scheduleRule.Rollbacked = true;
+                        scheduleRule.RollbackEventCompletedTime = DateTime.UtcNow;
+                        scheduleRule.RollbackFinalState = scaleSetVm.PowerState.Value;
+                        scheduleRule.RollbackExecutionStatus = Status.Completed.ToString();
+                    }
+                    else
+                    {
+                        scheduleRule.EventCompletedTime = DateTime.UtcNow;
+                        scheduleRule.FinalState = scaleSetVm.PowerState.Value;
+                        scheduleRule.ExecutionStatus = Status.Completed.ToString();
+                    }
                 }
 
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
@@ -74,8 +106,16 @@ namespace ChaosExecuter.Executer
             }
             catch (Exception ex)
             {
-                scheduleRule.Error = ex.Message;
-                scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                if (inputObject.EnableRollback)
+                {
+                    scheduleRule.RollbackError = ex.Message;
+                    scheduleRule.RollbackExecutionStatus = Status.Failed.ToString();
+                }
+                else
+                {
+                    scheduleRule.Error = ex.Message;
+                    scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                }
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
 
                 // dont throw the error here just handle the error and return the false
@@ -163,8 +203,9 @@ namespace ChaosExecuter.Executer
         /// <param name="actionType">Action type</param>
         /// <param name="scaleSetVm">Virtual Machine instance</param>
         /// <param name="scheduleRule">Event activity entity</param>
+        /// <param name="enableRollback">Event activity entity</param>
         /// <returns></returns>
-        private static async Task PerformChaos(string action, IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule)
+        private static async Task PerformChaos(string action, IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule, bool enableRollback)
         {
             ActionType actionType;
             if (!Enum.TryParse(action, out actionType))
@@ -187,17 +228,32 @@ namespace ChaosExecuter.Executer
                     await scaleSetVm.RestartAsync();
                     break;
             }
-
-            scheduleRule.ExecutionStatus = Status.Executing.ToString();
+            if (enableRollback)
+            {
+                scheduleRule.RollbackExecutionStatus = Status.Executing.ToString();
+            }
+            else
+            {
+                scheduleRule.ExecutionStatus = Status.Executing.ToString();
+            }
         }
 
         /// <summary>Set the initial property of the activity entity</summary>
         /// <param name="scaleSetVm">The vm</param>
         /// <param name="scheduleRule">Event activity entity.</param>
-        private static void SetInitialEventActivity(IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule)
+        /// /// <param name="enableRollback">Event activity entity.</param>
+        private static void SetInitialEventActivity(IVirtualMachineScaleSetVM scaleSetVm, ScheduledRules scheduleRule, bool enableRollback)
         {
-            scheduleRule.InitialState = scaleSetVm.PowerState.Value;
-            scheduleRule.ExecutionStartTime = DateTime.UtcNow;
+            if (enableRollback)
+            {
+                scheduleRule.RollbackInitialState = Status.Started.ToString();
+                scheduleRule.RollbackExecutionStartTime = DateTime.UtcNow;
+            }
+            else
+            {
+                scheduleRule.InitialState = scaleSetVm.PowerState.Value;
+                scheduleRule.ExecutionStartTime = DateTime.UtcNow;
+            }
         }
 
         /// <summary>Get the virtual machine.</summary>

@@ -27,6 +27,7 @@ namespace AzureChaos.Core.Entity
         public DateTime? ScheduledExecutionTime { get; set; }
 
         public string ExecutionStatus { get; set; }
+        public string RollbackExecutionStatus { get; set; }
 
         public string FiOperation { get; set; }
 
@@ -35,20 +36,24 @@ namespace AzureChaos.Core.Entity
         public string CombinationKey { get; set; }
 
         public DateTime? ExecutionStartTime { get; set; }
+        public DateTime? RollbackExecutionStartTime { get; set; }
 
         /// <summary>Event completed date time.</summary>
         public DateTime? EventCompletedTime { get; set; }
+        public DateTime? RollbackEventCompletedTime { get; set; }
 
         /// <summary>Initial State of the resource</summary>
         public string InitialState { get; set; }
-
+        public string RollbackInitialState { get; set; }
         /// <summary>Final State of the resource</summary>
         public string FinalState { get; set; }
-
+        public string RollbackFinalState { get; set; }
         /// <summary>Error message if anything occured on the time of execution.</summary>
         public string Warning { get; set; }
 
+        public string RollbackWarning { get; set; }
         /// <summary>Error message if anything occured on the time of execution.</summary>
         public string Error { get; set; }
+        public string RollbackError { get; set; }
     }
 }
