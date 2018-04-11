@@ -120,7 +120,7 @@ namespace ChaosExecuter.Executer
                     
                     if (inputObject.EnableRollback)
                     {
-                        scheduleRule.Rollbacked = true;
+                        scheduleRule.Rolledback = true;
                         scheduleRule.RollbackEventCompletedTime = DateTime.UtcNow;
                         scheduleRule.RollbackFinalState = virtualMachine.PowerState.Value;
                         scheduleRule.RollbackExecutionStatus = Status.Completed.ToString();

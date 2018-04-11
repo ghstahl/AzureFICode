@@ -35,7 +35,7 @@ namespace AzureChaos.Core.Helper
 
             if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString()))
             {
-                scheduleRule.Rollbacked = false;
+                scheduleRule.Rolledback = false;
             }
 
             return scheduleRule;
@@ -68,7 +68,7 @@ namespace AzureChaos.Core.Helper
                 TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilitySets.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = combinationKey,
-                Rollbacked = false
+                Rolledback = false
             };
         }
 
@@ -91,7 +91,7 @@ namespace AzureChaos.Core.Helper
                 TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilityZones.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,
-                Rollbacked = false
+                Rolledback = false
             };
         }
 

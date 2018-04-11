@@ -103,7 +103,7 @@ namespace ChaosExecuter.Api
                 ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = scheduledRule.CurrentAction,
-                IsRollbacked = scheduledRule.Rollbacked,
+                IsRollbacked = scheduledRule.Rolledback,
                 Status = scheduledRule.ExecutionStatus
             };
         }

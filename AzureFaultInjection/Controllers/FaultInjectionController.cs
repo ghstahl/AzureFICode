@@ -60,7 +60,7 @@ namespace AzureFaultInjection.Controllers
             {
                 var configItems = ConfigurationManager.AppSettings[StorageConnectionString];
 
-                var entities = GetSchedulesByDate(fromDate, toDate);                
+                var entities = GetSchedulesByDate(fromDate, toDate);
                 var result = entities?.Select(ConvertToSchedule);
                 return entities?.Select(ConvertToSchedule);
             }
@@ -77,7 +77,7 @@ namespace AzureFaultInjection.Controllers
             {
                 var entities = GetSchedulesByDate(fromDate, toDate);
                 var result = entities?.Select(ConvertToActivity);
-                return result.Concat(entities?.Select(ConvertToActivityRollback))?.OrderBy(x => x.ResourceName).OrderBy(x=> x.ChaosStartedTime);
+                return result.Concat(entities?.Select(ConvertToActivityRollback))?.Where(x => x != null).OrderBy(x => x.ResourceName).OrderBy(x => x.ChaosStartedTime);
             }
             catch (Exception ex)
             {
@@ -476,7 +476,7 @@ namespace AzureFaultInjection.Controllers
                 ResourceName = scheduledRule.ResourceName,
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
-                IsRollbacked = scheduledRule.Rollbacked,
+                IsRollbacked = scheduledRule.Rolledback,
                 Status = scheduledRule.ExecutionStatus
             };
         }
@@ -488,7 +488,7 @@ namespace AzureFaultInjection.Controllers
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
-                ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.Value.ToLocalTime().ToString(): null,
+                ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.Value.ToLocalTime().ToString() : null,
                 ChaosCompletedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.EventCompletedTime.Value.ToLocalTime().ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 InitialState = scheduledRule.InitialState,
@@ -502,11 +502,16 @@ namespace AzureFaultInjection.Controllers
 
         private static Activities ConvertToActivityRollback(ScheduledRules scheduledRule)
         {
+            if (scheduledRule.Rolledback == null && !scheduledRule.Rolledback.Value )
+            {
+                return null;
+            }
+
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
-                ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString(): null,
-                ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue? scheduledRule.RollbackEventCompletedTime.Value.ToLocalTime().ToString():null,
+                ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString() : null,
+                ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue ? scheduledRule.RollbackEventCompletedTime.Value.ToLocalTime().ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + ActionType.Start,
                 InitialState = scheduledRule.RollbackInitialState,
                 FinalState = scheduledRule.RollbackFinalState,
