@@ -475,9 +475,9 @@ namespace AzureFaultInjection.Controllers
             {
                 ResourceName = scheduledRule.ResourceName,
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
-                ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
+                ChaosOperation = scheduledRule.FiOperation,
                 IsRollbacked = scheduledRule.Rolledback,
-                Status = scheduledRule.ExecutionStatus
+                Status =scheduledRule.Rolledback.HasValue && scheduledRule.Rolledback.Value ? scheduledRule.RollbackExecutionStatus : Status.Executing.ToString() 
             };
         }
 
@@ -502,7 +502,7 @@ namespace AzureFaultInjection.Controllers
 
         private static Activities ConvertToActivityRollback(ScheduledRules scheduledRule)
         {
-            if (scheduledRule.Rolledback == null && !scheduledRule.Rolledback.Value )
+            if (scheduledRule.Rolledback == null || !scheduledRule.Rolledback.Value )
             {
                 return null;
             }
