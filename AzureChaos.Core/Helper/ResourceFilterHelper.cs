@@ -43,7 +43,7 @@ namespace AzureChaos.Core.Helper
                 TableOperators.And,
                 TableQuery.GenerateFilterConditionForDate("Timestamp",
                     QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.MeanTime)));
+                    DateTimeOffset.UtcNow.AddMinutes(-(azureSettings.Chaos.MeanTime + azureSettings.Chaos.SchedulerFrequency))));
             var combineFilter = !string.IsNullOrWhiteSpace(filter)
                 ? TableQuery.CombineFilters(dateFilter,
                     TableOperators.And,

@@ -128,32 +128,8 @@ namespace AzureChaos.Core.Helper
                     continue;
                 }
 
-                var items = ResourceFilterHelper.QueryByRowKey<ScheduledRules>(item.RowKey, StorageTableNames.ScheduledRulesTableName);
-                ActionType actionType;
                 string fiOperation = string.Empty;
-                if (items != null || items.Any())
-                {
-                    var latestItem = items.OrderByDescending(x => x.Timestamp).FirstOrDefault();
-                    if (latestItem != null)
-                    {
-                        var excludeActionType = latestItem.CurrentAction;
-                        var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
-                        azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
-                    }
-                }
-
-                fiOperation = GetAzureFiOperation(azureFiOperationList);
-                if (string.IsNullOrWhiteSpace(fiOperation))
-                {
-                    continue;
-                }
-
-                actionType = GetActionTobePerformed(item.State, fiOperation);
-                if (actionType == ActionType.Unknown)
-                {
-                    continue;
-                }
-
+                var actionType = GetActionType(item.RowKey, azureFiOperationList, item.State, out fiOperation);
                 var entityEntry = RuleEngineHelper.ConvertToScheduledRuleEntity(item, sessionId, actionType,
                     fiOperation, randomExecutionDateTime, virtualMachineGroup);
                 if (entityEntry != null)
@@ -174,17 +150,13 @@ namespace AzureChaos.Core.Helper
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
-                var fiOperation = GetAzureFiOperation(azureFiOperationList);
-                if (string.IsNullOrWhiteSpace(fiOperation))
+                if (item == null)
                 {
                     continue;
                 }
 
-                var actionType = GetActionTobePerformed(item.State, fiOperation);
-                if (actionType == ActionType.Unknown)
-                {
-                    continue;
-                }
+                string fiOperation = string.Empty;
+                var actionType = GetActionType(item.RowKey, azureFiOperationList, item.State, out fiOperation);
 
                 tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilityZone(item,
                     sessionId, actionType, fiOperation, randomExecutionDateTime));
@@ -202,17 +174,13 @@ namespace AzureChaos.Core.Helper
             var sessionId = Guid.NewGuid().ToString();
             foreach (var item in filteredVmSet)
             {
-                var fiOperation = GetAzureFiOperation(azureFiOperationList);
-                if (string.IsNullOrWhiteSpace(fiOperation))
+                if (item == null)
                 {
                     continue;
                 }
 
-                var actionType = GetActionTobePerformed(item.State, fiOperation);
-                if (actionType == ActionType.Unknown)
-                {
-                    continue;
-                }
+                string fiOperation = string.Empty;
+                var actionType = GetActionType(item.RowKey, azureFiOperationList, item.State, out fiOperation);
 
                 tableBatchOperation.InsertOrMerge(RuleEngineHelper.ConvertToScheduledRuleEntityForAvailabilitySet(item,
                     sessionId, actionType, fiOperation, randomExecutionDateTime, domainFlage));
@@ -292,6 +260,29 @@ namespace AzureChaos.Core.Helper
 
             virtualMachinesIds.AddRange(loadBalancers.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds()));
             return virtualMachinesIds;
+        }
+
+        private static ActionType GetActionType(string rowKey, List<string> azureFiOperationList, string state, out string fiOperation)
+        {
+            var items = ResourceFilterHelper.QueryByRowKey<ScheduledRules>(rowKey, StorageTableNames.ScheduledRulesTableName);
+            if (items != null || items.Any())
+            {
+                var latestItem = items.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                if (latestItem != null)
+                {
+                    var excludeActionType = latestItem.CurrentAction;
+                    var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
+                    azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
+                }
+            }
+
+            fiOperation = GetAzureFiOperation(azureFiOperationList);
+            if (string.IsNullOrWhiteSpace(fiOperation))
+            {
+                return ActionType.Unknown;
+            }
+
+            return GetActionTobePerformed(state, fiOperation);
         }
     }
 }

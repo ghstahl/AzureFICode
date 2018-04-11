@@ -1,18 +1,9 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using AzureChaos.Core.Constants;
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Providers;
-using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Network.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
@@ -20,6 +11,13 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table.Protocol;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
@@ -136,7 +134,7 @@ namespace ChaosExecuter.Crawler
                         batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachinesBatchOperation));
                     }
                     var virtualMachinesList = new List<string>();
-                    
+
                 }
                 catch (Exception e)
                 {
@@ -192,14 +190,13 @@ namespace ChaosExecuter.Crawler
 
             //var loadBalancerList = new List<ILoadBalancer>();
             //loadBalancer.SelectMany(x => x.Backends).SelectMany(x => x.Value.GetVirtualMachineIds());
-            var lbtest = GetVirtualMachinesFromLoadBalancers(loadBalancer.ResourceGroupName, loadBalancer.Id, azureClient, log);
+            var lbvms = GetVirtualMachinesFromLoadBalancers(loadBalancer.ResourceGroupName, loadBalancer.Id, azureClient, log);
             var tasks = new List<Task>
                                 {
-                                    lbtest
+                                    lbvms
                                 };
             Task.WhenAll(tasks);
-            var virtualMachineIds = lbtest.Result.Count;
-            if (lbtest.Result.Count > 0)
+            if (lbvms.Result != null && lbvms.Result.Count > 0)
             {
                 loadBalancerEntity.HasVirtualMachines = true;
             }

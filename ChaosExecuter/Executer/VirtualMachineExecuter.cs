@@ -49,12 +49,13 @@ namespace ChaosExecuter.Executer
             {
                 if (inputObject.EnableRollback)
                 {
-                    scheduleRule.RollbackWarning = Status.Started.ToString();
+                    scheduleRule.RollbackWarning = Warnings.ChaosDisabledAfterRules;
                 }
                 else
                 {
                     scheduleRule.Warning = Warnings.ChaosDisabledAfterRules;
                 }
+
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 return false;
             }
@@ -75,7 +76,7 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM Chaos :  The vm '" + inputObject.ResourceId + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
                     if (inputObject.EnableRollback)
                     {
-                        scheduleRule.RollbackExecutionStatus = Status.Started.ToString();
+                        scheduleRule.RollbackExecutionStatus = Status.Failed.ToString();
                         scheduleRule.RollbackWarning = string.Format(Warnings.ProvisionStateCheck, provisioningState);
                     }
                     else

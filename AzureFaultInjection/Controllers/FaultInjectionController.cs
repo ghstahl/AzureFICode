@@ -60,7 +60,8 @@ namespace AzureFaultInjection.Controllers
             {
                 var configItems = ConfigurationManager.AppSettings[StorageConnectionString];
 
-                var entities = GetSchedulesByDate(fromDate, toDate);
+                var entities = GetSchedulesByDate(fromDate, toDate);                
+                var result = entities?.Select(ConvertToSchedule);
                 return entities?.Select(ConvertToSchedule);
             }
             catch (Exception ex)
@@ -75,7 +76,8 @@ namespace AzureFaultInjection.Controllers
             try
             {
                 var entities = GetSchedulesByDate(fromDate, toDate);
-                return entities?.Select(ConvertToActivity);
+                var result = entities?.Select(ConvertToActivity);
+                return result.Concat(entities?.Select(ConvertToActivityRollback))?.OrderBy(x => x.ResourceName).OrderBy(x=> x.ChaosStartedTime);
             }
             catch (Exception ex)
             {
@@ -316,8 +318,8 @@ namespace AzureFaultInjection.Controllers
                 VmssPercentage = settings.Chaos.ScaleSetChaos.PercentageTermination,
                 IsVmssEnabled = settings.Chaos.ScaleSetChaos.Enabled,
 
-                LoadBalancerPercentage = settings.Chaos.LoadBalancerChaos.PercentageTermination,
-                IsLoadbalancerEnabled = settings.Chaos.LoadBalancerChaos.Enabled,
+                LoadBalancerPercentage = settings.Chaos.LoadBalancerChaos != null ? settings.Chaos.LoadBalancerChaos.PercentageTermination : 60,
+                IsLoadbalancerEnabled = settings.Chaos.LoadBalancerChaos != null ? settings.Chaos.LoadBalancerChaos.Enabled : false,
 
                 IsVmEnabled = settings.Chaos.VirtualMachineChaos.Enabled,
                 VmPercentage = settings.Chaos.VirtualMachineChaos.PercentageTermination,
@@ -486,14 +488,31 @@ namespace AzureFaultInjection.Controllers
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
-                ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
-                ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
+                ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.Value.ToLocalTime().ToString(): null,
+                ChaosCompletedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.EventCompletedTime.Value.ToLocalTime().ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,
                 Status = scheduledRule.ExecutionStatus,
                 Error = scheduledRule.Error,
                 Warning = scheduledRule.Warning
+            };
+        }
+
+
+        private static Activities ConvertToActivityRollback(ScheduledRules scheduledRule)
+        {
+            return new Activities()
+            {
+                ResourceName = scheduledRule.ResourceName,
+                ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString(): null,
+                ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue? scheduledRule.RollbackEventCompletedTime.Value.ToLocalTime().ToString():null,
+                ChaosOperation = scheduledRule.FiOperation + " - " + ActionType.Start,
+                InitialState = scheduledRule.RollbackInitialState,
+                FinalState = scheduledRule.RollbackFinalState,
+                Status = scheduledRule.RollbackExecutionStatus,
+                Error = scheduledRule.RollbackError,
+                Warning = scheduledRule.RollbackWarning
             };
         }
 
