@@ -77,7 +77,7 @@ namespace AzureFaultInjection.Controllers
             {
                 var entities = GetSchedulesByDate(fromDate, toDate);
                 var result = entities?.Select(ConvertToActivity);
-                return result.Concat(entities?.Select(ConvertToActivityRollback))?.Where(x => x != null).OrderBy(x => x.ResourceName).OrderBy(x => x.ChaosStartedTime);
+                return result?.Concat(entities?.Select(ConvertToActivityRollback))?.Where(x => x != null).OrderBy(x => x.ResourceName).OrderBy(x => x.ChaosStartedTime);
             }
             catch (Exception ex)
             {
