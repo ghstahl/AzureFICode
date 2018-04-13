@@ -165,7 +165,7 @@ namespace ChaosExecuter.Crawler
         /// <param name="availabilitySetIds"></param>
         /// <param name="azureClient"></param>
         /// <returns></returns>
-        private static IList<IGrouping<string, IVirtualMachine>> GetVirtualMachineListByResourceGroup(string resourceGroupName, 
+        private static IList<IGrouping<string, IVirtualMachine>> GetVirtualMachineListByResourceGroup(string resourceGroupName,
             List<string> availabilitySetIds,
             AzureClient azureClient)
         {
@@ -176,8 +176,15 @@ namespace ChaosExecuter.Crawler
                 return null;
             }
 
+            var loadBalancerVmTask = VirtualMachineHelper.GetVirtualMachinesFromLoadBalancers(resourceGroupName, azureClient);
+            var loadbalancerVms = loadBalancerVmTask.Result;
+            if (loadbalancerVms != null && loadbalancerVms.Any())
+            {
+                virtualMachinesList = virtualMachinesList.Where(x => !loadbalancerVms.Contains(x.Id))?.ToList();
+            }
+
             // Group the the virtual machine based on the availability set id
-            var virtualMachinesByAvailabilitySetId = virtualMachinesList.Where(x => availabilitySetIds
+            var virtualMachinesByAvailabilitySetId = virtualMachinesList?.Where(x => availabilitySetIds
                     .Contains(x.AvailabilitySetId, StringComparer.OrdinalIgnoreCase))
                 .GroupBy(x => x.AvailabilitySetId, x => x).ToList();
             return virtualMachinesByAvailabilitySetId;

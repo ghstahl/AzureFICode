@@ -61,26 +61,26 @@ namespace ChaosExecuter.Crawler
 
                 var batchTasks = new ConcurrentBag<Task>();
 
-                // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
+               // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
                 Parallel.ForEach(resourceGroups, async eachResourceGroup =>
-                {
-                    var virtualMachinesByResourceGroup = await GetVirtualMachinesByResourceGroup(eachResourceGroup, log);
-                    if (virtualMachinesByResourceGroup == null) return;
-                    var virtualMachineList = virtualMachinesByResourceGroup.ToList();
+            {                
+                var virtualMachinesByResourceGroup = await GetVirtualMachinesByResourceGroup(eachResourceGroup, log);
+                if (virtualMachinesByResourceGroup == null) return;
+                var virtualMachineList = virtualMachinesByResourceGroup.ToList();              
 
-                    // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
-                    for (var i = 0; i < virtualMachineList.Count(); i += TableConstants.TableServiceBatchMaximumOperations)
+                // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+                for (var i = 0; i < virtualMachineList.Count(); i += TableConstants.TableServiceBatchMaximumOperations)
+                {
+                    var batchItems = virtualMachineList.Skip(i)
+                        .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                    var batchOperation = InsertOrReplaceEntitiesIntoTable(batchItems,
+                        eachResourceGroup.Name, log);
+                    if (batchOperation != null)
                     {
-                        var batchItems = virtualMachineList.Skip(i)
-                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
-                        var batchOperation = InsertOrReplaceEntitiesIntoTable(batchItems,
-                            eachResourceGroup.Name, log);
-                        if (batchOperation != null)
-                        {
-                            batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(batchOperation));
-                        }
+                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(batchOperation));
                     }
-                });
+                }
+            });
 
                 await Task.WhenAll(batchTasks);
             }

@@ -169,9 +169,15 @@ namespace ChaosExecuter.Crawler
             {
                 return null;
             }
+            var loadBalancerVmTask = VirtualMachineHelper.GetVirtualMachinesFromLoadBalancers(resourceGroupName, azureClient);
+            var loadbalancerVms = loadBalancerVmTask.Result;
+            if (loadbalancerVms != null && loadbalancerVms.Any())
+            {
+                virtualMachinesList = virtualMachinesList.Where(x => !loadbalancerVms.Contains(x.Id))?.ToList();
+            }
 
             // Group the the virtual machine based on the availability set id
-            var virtualMachinesByAvailabilitySetId = virtualMachinesList.Where(x => availabilitySetIds
+            var virtualMachinesByAvailabilitySetId = virtualMachinesList?.Where(x => availabilitySetIds
                     .Contains(x.AvailabilitySetId, StringComparer.OrdinalIgnoreCase))
                 .GroupBy(x => x.AvailabilitySetId, x => x).ToList();
             return virtualMachinesByAvailabilitySetId;
@@ -231,7 +237,7 @@ namespace ChaosExecuter.Crawler
 
             return virtualMachineTableBatchOperation;
         }
-
+        
         /// <summary>Convert the Availability Set instance to Availability set entity.</summary>
         /// <param name="availabilitySet">The scale set instance.</param>
         /// <returns></returns>
