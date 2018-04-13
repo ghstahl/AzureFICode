@@ -32,7 +32,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Api\" />
     <Folder Include="Properties\" />
     <Folder Include="Trigger\" />
     <Folder Include="Schedulers\" />
