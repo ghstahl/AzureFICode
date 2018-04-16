@@ -112,10 +112,20 @@ $("#submit").on("click", function (e) {
   });
 });
 
+$("#avset-enabled").change(function () {
+  var isEnabled = this.checked;
+  if (!isEnabled) {
+    $("#isFaultDomainEnabled")[0].checked = false;
+    $("#isUpdateDomainEnabled")[0].checked = false;
+  }
+});
+
 $("#selectSubscription").change(function () {
   var subscription = this.value;
   getResourceGroups(subscription);
 });
+
+
 
 function getSubscriptions(currentParent, nextParent, callback) {
   var tenantId = currentParent.find("#tenant-id").val();

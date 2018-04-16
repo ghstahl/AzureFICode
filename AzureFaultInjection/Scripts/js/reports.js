@@ -65,6 +65,7 @@ function getActivities(fromdate, todate) {
   });
   request.done(function (response) {
     var $tbody = $("table#activity tbody");
+    $tbody.html('');
     appendActivityBody($tbody, response);
   });
 
@@ -81,6 +82,7 @@ function getSchedules(fromdate, todate) {
   });
   request.done(function (response) {
     var $tbody = $("table#schedule tbody");
+    $tbody.html('');
     appendScheduleBody($tbody, response);
   });
 
