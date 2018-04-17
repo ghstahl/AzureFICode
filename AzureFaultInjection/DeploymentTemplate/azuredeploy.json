@@ -36,7 +36,7 @@
     }
   },
   "variables": {
-    "repoUrl": "https://github.com/azurefaultinjection/armfunctions.git",
+    "repoUrl": "https://github.com/azurefaultinjection/armfunctionv2.git",
     "branch": "master",
     "functionName": "AvailabilitySetCrawler",
     "hostingPlanName": "[parameters('functionAppName')]",

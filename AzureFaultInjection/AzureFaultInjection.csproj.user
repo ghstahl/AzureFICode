@@ -16,7 +16,7 @@
     <WebStackScaffolding_IsReferencingScriptLibrariesSelected>True</WebStackScaffolding_IsReferencingScriptLibrariesSelected>
     <WebStackScaffolding_LayoutPageFile />
     <WebStackScaffolding_IsAsyncSelected>False</WebStackScaffolding_IsAsyncSelected>
-    <NameOfLastUsedPublishProfile>AzureFaultInjectionTest - Web Deploy</NameOfLastUsedPublishProfile>
+    <NameOfLastUsedPublishProfile>AzureFaultInjection20180416014717 - Web Deploy</NameOfLastUsedPublishProfile>
     <ProjectView>ProjectFiles</ProjectView>
     <LastActiveSolutionConfig>Debug|Any CPU</LastActiveSolutionConfig>
   </PropertyGroup>

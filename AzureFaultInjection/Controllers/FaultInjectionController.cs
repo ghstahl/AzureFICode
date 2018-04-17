@@ -489,7 +489,7 @@ namespace AzureFaultInjection.Controllers
             {
                 ResourceName = scheduledRule.ResourceName,
                 ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.Value.ToLocalTime().ToString() : null,
-                ChaosCompletedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.EventCompletedTime.Value.ToLocalTime().ToString() : null,
+                ChaosCompletedTime = scheduledRule.EventCompletedTime.HasValue ? scheduledRule.EventCompletedTime.Value.ToLocalTime().ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,

@@ -315,6 +315,8 @@
     <Content Include="Content\updated\scss\style.scss" />
     <Content Include="Content\updated\fonts\glyphicons-halflings-regular.woff2" />
     <None Include="Properties\PublishProfiles\AzureFaultInjection - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\AzureFaultInjection20180316125729 - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\AzureFaultInjection20180416014717 - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\AzureFaultInjectionTest - Web Deploy.pubxml" />
     <Content Include="Scripts\js\bootstrap-datetimepicker.js" />
     <Content Include="Scripts\js\event-helper.js" />
