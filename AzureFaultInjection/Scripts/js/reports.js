@@ -59,10 +59,10 @@ $("#scheduleSearch").on("click", function () {
 
 function getActivities(fromdate, todate) {
     if (fromdate && fromdate.length > 0) {
-        fromdate = moment(fromdate).utc().format('YYYY-MM-DDTHH:mm:ssZZ');
+        fromdate = moment(fromdate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
     }
     if (todate && todate.length > 0) {
-        todate = moment(todate).utc().format('YYYY-MM-DDTHH:mm:ssZZ');
+        todate = moment(todate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
     }
     var request = $.ajax({
         url: "api/FaultInjection/getactivities",
@@ -82,10 +82,10 @@ function getActivities(fromdate, todate) {
 
 function getSchedules(fromdate, todate) {
     if (fromdate && fromdate.length > 0) {
-        fromdate = moment(fromdate).utc().format('YYYY-MM-DDTHH:mm:ssZZ');
+        fromdate = moment(fromdate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
     }
     if (todate && todate.length > 0) {
-        todate = moment(todate).utc().format('YYYY-MM-DDTHH:mm:ssZZ');
+        todate = moment(todate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
     }
     var request = $.ajax({
         url: "api/FaultInjection/getschedules",
@@ -128,12 +128,13 @@ function appendActivityBody($tbody, existingData) {
 
         var $chaosStartedTime = $("<td></td>");
         if (this.ChaosStartedTime) {
-            $chaosStartedTime.text(moment(this.ChaosStartedTime).local().format('YYYY-MM-DD HH:mm:ss'));
+            $chaosStartedTime.text(moment(this.ChaosStartedTime).local().format('DD/MM/YYYY HH:mm:ssZZ'));
         }
 
         var $chaosCompletedTime = $("<td></td>");
         if (this.ChaosCompletedTime) {
-            $chaosCompletedTime.text(moment(this.ChaosCompletedTime).local().format('YYYY-MM-DD HH:mm:ss'));
+            $chaosCompletedTime.text(moment(this.ChaosCompletedTime).local().format('DD/MM/YYYY HH:mm:ssZZ'));
+            
         }
 
         var $initialState = $("<td></td>");

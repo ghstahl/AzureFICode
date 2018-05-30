@@ -197,7 +197,7 @@ namespace AzureChaos.Core.Helper
             }
 
             Random random = new Random();
-            int index = random.Next(0, azureFaultInjectionActions.Count - 1);
+            int index = random.Next(0, azureFaultInjectionActions.Count );
             return azureFaultInjectionActions[index];
         }
 

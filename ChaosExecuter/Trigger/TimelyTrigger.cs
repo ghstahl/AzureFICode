@@ -117,7 +117,7 @@ namespace ChaosExecuter.Trigger
                         QueryComparisons.Equal,
                         Status.Completed.ToString());
                 var rollbackFilter =
-                    TableQuery.GenerateFilterConditionForBool("Rollbacked", QueryComparisons.Equal, false);
+                    TableQuery.GenerateFilterConditionForBool("Rolledback", QueryComparisons.Equal, false);
                 var rollbackStatusFilter = TableQuery.CombineFilters(statusFilter, TableOperators.And, rollbackFilter);
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
