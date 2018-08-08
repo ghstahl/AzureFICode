@@ -75,17 +75,20 @@ function getActivities(fromdate, todate) {
         appendActivityBody($tbody, response);
     });
 
-    request.fail(function (jqXHR, textStatus) {
-        alert("Request failed: " + textStatus);
-    });
+    //request.fail(function (jqXHR, textStatus, errorThrown) {
+    //    if (errorThrown ) {
+    //        alert("Request failed: " + errorThrown);
+    //    }
+
+    //});
 }
 
 function getSchedules(fromdate, todate) {
     if (fromdate && fromdate.length > 0) {
-        fromdate = moment(fromdate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
+        fromdate = moment(fromdate).utc().format('DD/MM/YYYY HH:mm:ss');
     }
     if (todate && todate.length > 0) {
-        todate = moment(todate).utc().format('DD/MM/YYYY HH:mm:ssZZ');
+        todate = moment(todate).utc().format('DD/MM/YYYY HH:mm:ss');
     }
     var request = $.ajax({
         url: "api/FaultInjection/getschedules",
@@ -98,9 +101,13 @@ function getSchedules(fromdate, todate) {
         appendScheduleBody($tbody, response);
     });
 
-    request.fail(function (jqXHR, textStatus) {
-        alert("Request failed: " + textStatus);
-    });
+    //request.fail(function (jqXHR, textStatus, errorThrown) {
+    //    if (errorThrown) {
+    //        alert("Request failed: " + errorThrown);
+    //    }
+        
+    //});
+   
 }
 
 function appendActivityBody($tbody, existingData) {
@@ -128,13 +135,14 @@ function appendActivityBody($tbody, existingData) {
 
         var $chaosStartedTime = $("<td></td>");
         if (this.ChaosStartedTime) {
-            $chaosStartedTime.text(moment(this.ChaosStartedTime).local().format('DD/MM/YYYY HH:mm:ssZZ'));
+            $chaosStartedTime.text(this.ChaosStartedTime);
+            //moment(this.ChaosStartedTime).utc().format('DD/MM/YYYY HH:mm:ssZZ')
         }
 
         var $chaosCompletedTime = $("<td></td>");
         if (this.ChaosCompletedTime) {
-            $chaosCompletedTime.text(moment(this.ChaosCompletedTime).local().format('DD/MM/YYYY HH:mm:ssZZ'));
-            
+            $chaosCompletedTime.text(this.ChaosCompletedTime);
+            //moment(this.ChaosCompletedTime).utc().format('DD/MM/YYYY HH:mm:ssZZ')
         }
 
         var $initialState = $("<td></td>");

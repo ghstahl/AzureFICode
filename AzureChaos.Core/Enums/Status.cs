@@ -9,6 +9,7 @@
         Failed,
         Stopped,
         Running,
-        Executing
+        Executing,
+        Incomplete
     }
 }

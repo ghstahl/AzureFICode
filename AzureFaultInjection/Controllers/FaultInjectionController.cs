@@ -61,8 +61,9 @@ namespace AzureFaultInjection.Controllers
                 var configItems = ConfigurationManager.AppSettings[StorageConnectionString];
 
                 var entities = GetSchedulesByDate(fromDate, toDate);
-                var result = entities?.Select(ConvertToSchedule);
-                return entities?.Select(ConvertToSchedule);
+                var scheduledRuleses = entities as ScheduledRules[] ?? entities.ToArray();
+                var result = scheduledRuleses?.Select(ConvertToSchedule);
+                return scheduledRuleses?.Select(ConvertToSchedule);
             }
             catch (Exception ex)
             {
@@ -76,8 +77,9 @@ namespace AzureFaultInjection.Controllers
             try
             {
                 var entities = GetSchedulesByDate(fromDate, toDate);
-                var result = entities?.Select(ConvertToActivity);
-                return result?.Concat(entities?.Select(ConvertToActivityRollback))?.Where(x => x != null).OrderBy(x => x.ResourceName).OrderBy(x => x.ChaosStartedTime);
+                var scheduledRuleses = entities as ScheduledRules[] ?? entities.ToArray();
+                var result = scheduledRuleses?.Select(ConvertToActivity);
+                return result?.Concat(scheduledRuleses?.Select(ConvertToActivityRollback))?.Where(x => x != null && x.ChaosCompletedTime != null && x.ChaosStartedTime != null && x.FinalState != null && x.InitialState != null && x.Status != null && x.ResourceName != null).OrderBy(x => x.ChaosCompletedTime).ThenBy(x => x.ChaosStartedTime);
             }
             catch (Exception ex)
             {
@@ -93,6 +95,7 @@ namespace AzureFaultInjection.Controllers
                 {AzureFiOperation.Restart.ToString(), "Restart"}
             };
         }
+        
 
         // GET: api/Api
         [ActionName("getsubscriptions")]
@@ -195,7 +198,18 @@ namespace AzureFaultInjection.Controllers
                 throw new HttpRequestWithStatusException("ClientId/ClientSecret/TenantId/Subscription is empty", new HttpResponseException(HttpStatusCode.BadRequest));
             }
 
-            try
+            if (2* model.RollbackFrequency >  model.SchedulerFrequency)
+            {
+                throw new Exception("Power Cycle Schedule Frequency should be less than half the Scheduler Frequency, Please decrease the Power Cycle Schedule or increase the Scheduler Frequency value");
+            }
+
+            if (2 * model.RollbackFrequency <=  model.SchedulerFrequency &&
+                model.SchedulerFrequency > (model.CrawlerFrequency + model.MeanTime))
+            {
+                throw new HttpRequestWithStatusException("Scheduler Frequency should be less than the sum of Crawler Frequency & Mean Time between FI on VM, Please reduce the value of Scheduler Frequency", new HttpResponseException(HttpStatusCode.BadRequest));
+            }
+
+                try
             {
                 var storageAccountName = ConfigurationManager.AppSettings[StorageAccountName];
                 var resourceGroupName = ConfigurationManager.AppSettings[ResourceGroupName];
@@ -477,7 +491,7 @@ namespace AzureFaultInjection.Controllers
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = scheduledRule.FiOperation,
                 IsRollbacked = scheduledRule.Rolledback,
-                Status =scheduledRule.Rolledback.HasValue && scheduledRule.Rolledback.Value ? scheduledRule.RollbackExecutionStatus : Status.Executing.ToString() 
+                Status = (scheduledRule.FiOperation == "Restart") ? Status.Completed.ToString() : scheduledRule.Rolledback.HasValue && scheduledRule.Rolledback.Value ? scheduledRule.RollbackExecutionStatus : Status.Incomplete.ToString()
             };
         }
 
@@ -488,21 +502,21 @@ namespace AzureFaultInjection.Controllers
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
-                ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.Value.ToLocalTime().ToString() : null,
-                ChaosCompletedTime = scheduledRule.EventCompletedTime.HasValue ? scheduledRule.EventCompletedTime.Value.ToLocalTime().ToString() : null,
+                ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.ToString() : null,
+                ChaosCompletedTime = scheduledRule.EventCompletedTime.HasValue ? scheduledRule.EventCompletedTime.ToString(): null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + triggerData.Action.ToString(),
                 InitialState = scheduledRule.InitialState,
                 FinalState = scheduledRule.FinalState,
                 Status = scheduledRule.ExecutionStatus,
                 Error = scheduledRule.Error,
                 Warning = scheduledRule.Warning
-            };
+            };       
         }
 
 
         private static Activities ConvertToActivityRollback(ScheduledRules scheduledRule)
         {
-            if (scheduledRule.Rolledback == null || !scheduledRule.Rolledback.Value )
+            if (scheduledRule.Rolledback == null || !scheduledRule.Rolledback.Value)
             {
                 return null;
             }
@@ -510,7 +524,9 @@ namespace AzureFaultInjection.Controllers
             return new Activities()
             {
                 ResourceName = scheduledRule.ResourceName,
-                ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString() : null,
+                ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue
+                    ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString()
+                    : null,
                 ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue ? scheduledRule.RollbackEventCompletedTime.Value.ToLocalTime().ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + ActionType.Start,
                 InitialState = scheduledRule.RollbackInitialState,
@@ -523,15 +539,37 @@ namespace AzureFaultInjection.Controllers
 
         private static IEnumerable<ScheduledRules> GetSchedulesByDate(string fromDate, string toDate)
         {
-            if (!DateTimeOffset.TryParse(fromDate, out var fromDateTimeOffset))
+            //double fromDateSeconds = 86400;
+            //double toDateSeconds = 0;
+            /*if (!string.IsNullOrWhiteSpace(fromDate))
             {
-                fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
+                DateTime myFromDate = DateTime.ParseExact(fromDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+                fromDateSeconds = (DateTime.UtcNow - myFromDate).TotalSeconds;
             }
 
-            if (!DateTimeOffset.TryParse(toDate, out var toDateTimeOffset))
+            if (!string.IsNullOrWhiteSpace(toDate))
             {
-                toDateTimeOffset = DateTimeOffset.UtcNow;
+                DateTime myToDate = DateTime.ParseExact(toDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+                toDateSeconds = (DateTime.UtcNow - myToDate).TotalSeconds;
             }
+            */
+            DateTimeOffset fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
+            if (!string.IsNullOrWhiteSpace(fromDate))
+            {
+                fromDateTimeOffset = DateTimeOffset.ParseExact(fromDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            DateTimeOffset toDateTimeOffset= DateTimeOffset.UtcNow;
+            if (!string.IsNullOrWhiteSpace(toDate))
+            {
+                toDateTimeOffset = DateTimeOffset.ParseExact(toDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+            }
+            
+           
 
             var result = ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
                 toDateTimeOffset.ToUniversalTime(),
