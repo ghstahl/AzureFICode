@@ -57,7 +57,7 @@ namespace AzureChaos.Core.Interfaces
                 var domainNumber = int.Parse(domainId);
                 var availabilitySetId = componentsInAvailabilitySetDomainCombination.First();
                 InsertVirtualMachineAvailabilitySetDomainResults(availabilitySetId, domainNumber);
-                log.Error("Availability RuleEngine: Completed creating rule engine");
+                log.Info("AvailabilitySet RuleEngine: Completed creating rule engine");
             }
             catch (Exception ex)
             {

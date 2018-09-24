@@ -18,11 +18,11 @@ namespace ChaosExecuter.Trigger
     /// if the execution time is near.</summary>
     public static class TimelyTrigger
     {
-        private const int TriggerFrequency = 2;
+        private const int TriggerFrequency = 4;
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
         [FunctionName("TimelyTrigger")]
-        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, [OrchestrationClient]
+        public static async Task Run([TimerTrigger("0 */4 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
             log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");
@@ -90,7 +90,7 @@ namespace ChaosExecuter.Trigger
                 }
 
                 var functionMapName = (partitionKey.Equals(VirtualMachineGroup.AvailabilityZones.ToString(), StringComparison.OrdinalIgnoreCase)
-                    && result.RowKey.Contains(VirtualMachineGroup.VirtualMachineScaleSets.ToString()) ?
+                    && result.RowKey.ToLowerInvariant().Contains(VirtualMachineGroup.VirtualMachineScaleSets.ToString().ToLowerInvariant()) ?
                     VirtualMachineGroup.AvailabilityZones.ToString() + VirtualMachineGroup.VirtualMachineScaleSets.ToString()
                     : partitionKey);
                 var functionName = Mappings.FunctionNameMap[functionMapName];

@@ -267,13 +267,33 @@ namespace AzureChaos.Core.Helper
             var items = ResourceFilterHelper.QueryByRowKey<ScheduledRules>(rowKey, StorageTableNames.ScheduledRulesTableName);
             if (items != null || items.Any())
             {
-                var latestItem = items.OrderByDescending(x => x.Timestamp).FirstOrDefault();
-                if (latestItem != null)
+                /*if (state == "PowerState/stopped")
                 {
-                    var excludeActionType = latestItem.CurrentAction;
-                    var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
-                    azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
+                    var includedActionList = azureFiOperationList.Where(x => x.Equals("PowerCycle", StringComparison.OrdinalIgnoreCase)).ToList();
+                    //What if the azureOperationList is only restart?The ActionType.Unknown will be selected.
+                    azureFiOperationList = includedActionList == null || !includedActionList.Any() ? azureFiOperationList : includedActionList;
                 }
+                else
+                {
+                */
+                    var latestItem = items.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                    if (latestItem != null)
+                    {
+                        var excludeActionType = latestItem.CurrentAction;
+                        var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
+                        azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
+                        /*if (latestItem.CurrentAction == "PowerOff")
+                        {
+                            azureFiOperationList = azureFiOperationList.Where(x => x.Equals(latestItem.FiOperation, StringComparison.OrdinalIgnoreCase)).ToList();
+                        }
+                        else
+                        {
+                            var excludedActionList = azureFiOperationList.Where(x => !x.Equals(excludeActionType, StringComparison.OrdinalIgnoreCase)).ToList();
+                            azureFiOperationList = excludedActionList == null || !excludedActionList.Any() ? azureFiOperationList : excludedActionList;
+                        }*/
+                    }
+               // }
+                
             }
 
             fiOperation = GetAzureFiOperation(azureFiOperationList);

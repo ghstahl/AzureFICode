@@ -99,12 +99,26 @@ namespace ChaosExecuter.Executer
                     if (inputObject.EnableRollback)
                     {
                         scheduleRule.RollbackExecutionStatus = Status.Failed.ToString();
-                        scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                        if (inputObject.Action == "Restart")
+                        {
+                            scheduleRule.RollbackWarning = Warnings.RestartOnStop;
+                        }
+                        else
+                        {
+                            scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                        }
                     }
                     else
                     {
                         scheduleRule.ExecutionStatus = Status.Failed.ToString();
-                        scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                        if (inputObject.Action == "Restart")
+                        {
+                            scheduleRule.RollbackWarning = Warnings.RestartOnStop;
+                        }
+                        else
+                        {
+                            scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                        }
                     }
 
                     StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
@@ -130,6 +144,10 @@ namespace ChaosExecuter.Executer
                         scheduleRule.EventCompletedTime = DateTime.UtcNow;
                         scheduleRule.FinalState = virtualMachine.PowerState.Value;
                         scheduleRule.ExecutionStatus = Status.Completed.ToString();
+                        if (scheduleRule.FiOperation == "Restart")
+                        {
+                            scheduleRule.Rolledback = null;
+                        }
                     }
                 }
 
@@ -259,7 +277,7 @@ namespace ChaosExecuter.Executer
 
             if (currentAction == ActionType.Stop || currentAction == ActionType.PowerOff || currentAction == ActionType.Restart) // Restart on stop is a valid operation
             {
-                return state != PowerState.Stopping && state != PowerState.Stopped;
+                return state != PowerState.Stopping && state != PowerState.Stopped && state != PowerState.Deallocated;
             }
 
             return false;

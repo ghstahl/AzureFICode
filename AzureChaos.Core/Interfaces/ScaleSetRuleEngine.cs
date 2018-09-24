@@ -51,10 +51,11 @@ namespace AzureChaos.Core.Interfaces
                 var count = VmCount(filteredVmSet.Count);
                 var tasks = new List<Task>();
 
-                do
-                {
+               // do
+               // {
                     var randomSets = filteredVmSet.Take(count).ToList();
                     filteredVmSet = filteredVmSet.Except(randomSets).ToList();
+                    randomSets = randomSets.Where(x => PowerState.Parse(x.State) == PowerState.Running).ToList();
                     for (var i = 0;
                         i < randomSets.Count;
                         i += TableConstants.TableServiceBatchMaximumOperations)
@@ -69,7 +70,7 @@ namespace AzureChaos.Core.Interfaces
                         var operation = batchOperation;
                         tasks.Add(table.ExecuteBatchAsync(operation));
                     }
-                } while (filteredVmSet.Any());
+               // } while (filteredVmSet.Any());
 
                 Task.WhenAll(tasks);
                 log.Info("Scaleset RuleEngine: Completed creating rule engine.");

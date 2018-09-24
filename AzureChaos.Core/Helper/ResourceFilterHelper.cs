@@ -120,5 +120,22 @@ namespace AzureChaos.Core.Helper
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet?.ToList();
         }
+        public static List<T> QueryByFromToDateForActivities<T>(DateTimeOffset fromDate,
+            DateTimeOffset toDate,
+            string propertyName,
+            string tableName)
+            where T : ITableEntity, new()
+        {
+            var tableQuery = new TableQuery<T>();
+            var dateFilter = TableQuery.CombineFilters(
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.GreaterThanOrEqual,
+                    fromDate),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.LessThanOrEqual,
+                    toDate));
+            tableQuery = tableQuery.Where(dateFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
+            return resultsSet?.ToList();
+        }
     }
 }

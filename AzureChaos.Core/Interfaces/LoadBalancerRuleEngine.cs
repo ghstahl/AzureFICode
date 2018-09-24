@@ -45,8 +45,8 @@ namespace AzureChaos.Core.Interfaces
                 var count = VmCount(filteredVmSet.Count);
                 var tasks = new List<Task>();
 
-                do
-                {
+              //  do
+              //  {
                     var randomSets = filteredVmSet.Take(count).ToList();
                     filteredVmSet = filteredVmSet.Except(randomSets).ToList();
                     for (var i = 0;
@@ -65,14 +65,14 @@ namespace AzureChaos.Core.Interfaces
                         tasks.Add(table.ExecuteBatchAsync(operation));
                     }
 
-                } while (filteredVmSet.Any());
+              //  } while (filteredVmSet.Any());
 
                 Task.WhenAll(tasks);
                 log.Info("Loadbalancer RuleEngine: Completed creating rule engine.");
             }
             catch (Exception ex)
             {
-
+                log.Error("LoadBalancer RuleEngine: Exception thrown. ", ex);
             }
         }
 

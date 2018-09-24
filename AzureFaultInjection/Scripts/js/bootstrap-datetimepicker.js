@@ -904,7 +904,8 @@
         }
       },
 
-      /**
+      /*
+       * *
        * Hides the widget. Possibly will emit dp.hide
        */
       hide = function () {
@@ -1193,7 +1194,8 @@
         return false;
       },
 
-      /**
+      /*
+       * *
        * Shows the widget. Possibly will emit dp.show and dp.change
        */
       show = function () {
@@ -1259,7 +1261,8 @@
         return picker;
       },
 
-      /**
+      /*
+       * *
        * Shows or hides the widget
        */
       toggle = function () {
@@ -2299,7 +2302,8 @@
       update();
       return picker;
     };
-    /**
+    /*
+     * *
      * Returns the component's model current viewDate, a moment object or null if not set. Passing a null value unsets the components model current moment. Parsing of the newDate parameter is made using moment library with the options.format and options.useStrict components configuration.
      * @param {Takes string, viewDate, moment, null parameter.} newDate
      * @returns {viewDate.clone()}
@@ -2396,7 +2400,8 @@
    * documents the function and classes that are added to jQuery by this plug-in.
    * @memberOf jQuery
    */
-  /**
+  /*
+   * *
    * Show comments
    * @class datetimepicker
    * @memberOf jQuery.fn

@@ -39,8 +39,8 @@ namespace AzureChaos.Core.Interfaces
                 var count = VmCount(vmSets.Count);
                 var tasks = new List<Task>();
 
-                do
-                {
+                //do
+                //{
                     var randomSets = vmSets.Take(count).ToList();
                     vmSets = vmSets.Except(randomSets).ToList();
                     for (var i = 0;
@@ -58,7 +58,7 @@ namespace AzureChaos.Core.Interfaces
 
                         tasks.Add(table.ExecuteBatchAsync(batchOperation));
                     }
-                } while (vmSets.Any());
+               // } while (vmSets.Any());
 
                 Task.WhenAll(tasks);
                 log.Info("VirtualMachine RuleEngine: Completed creating rule engine..");
@@ -74,6 +74,8 @@ namespace AzureChaos.Core.Interfaces
         /// <returns></returns>
         private IList<VirtualMachineCrawlerResponse> GetRandomVmSet()
         {
+            //To remove the virtual machines which are recently executed.
+            var executedResultsSet = new List<VirtualMachineCrawlerResponse>();
             var groupNameFilter = TableQuery.GenerateFilterCondition("VirtualMachineGroup",
                 QueryComparisons.Equal,
                 VirtualMachineGroup.VirtualMachines.ToString());
@@ -90,9 +92,24 @@ namespace AzureChaos.Core.Interfaces
                 StorageTableNames.ScheduledRulesTableName);
             var scheduleEntitiesResourceIds = scheduleEntities == null || !scheduleEntities.Any() ? new List<string>() :
                 scheduleEntities.Select(x => x.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash));
-
-            var result = resultsSet.Where(x => !scheduleEntitiesResourceIds.Contains(x.Id));
-            return result.ToList();
+            if (scheduleEntitiesResourceIds.Count() != 0)
+            {
+                foreach (var result in resultsSet)
+                {
+                    foreach (var Id in scheduleEntitiesResourceIds)
+                    {
+                        if ((Id.Contains(result.ResourceGroupName)) && (Id.Contains(result.ResourceName)))
+                        {
+                            executedResultsSet.Add(result);
+                            break;
+                        }
+                    }
+                }
+                //List<VirtualMachineCrawlerResponse> resultsSets = resultsSet.Where(x => (scheduleEntitiesResourceIds.Contains(x.ResourceGroupName) && scheduleEntitiesResourceIds.Contains(x.ResourceName))).ToList();
+                return resultsSet = resultsSet.Except(executedResultsSet).ToList();
+            }
+            else
+                return resultsSet.ToList();
         }
 
         /// <summary>Get the virtual machine count based on the config percentage.</summary>

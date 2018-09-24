@@ -12,6 +12,7 @@ using Microsoft.Azure.Management.Storage.Fluent;
 using Microsoft.Rest.Azure;
 using Microsoft.Rest.TransientFaultHandling;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
 using System.Xml;
+using AzureChaos.Core.Providers;
 
 namespace AzureFaultInjection.Controllers
 {
@@ -70,16 +72,53 @@ namespace AzureFaultInjection.Controllers
                 throw;
             }
         }
-
+       
         [ActionName("getactivities")]
         public IEnumerable<Activities> GetActivities(string fromDate, string toDate)
         {
             try
             {
-                var entities = GetSchedulesByDate(fromDate, toDate);
-                var scheduledRuleses = entities as ScheduledRules[] ?? entities.ToArray();
+                /*var scheduledRuleses = entities as ScheduledRules[] ?? entities.ToArray();
                 var result = scheduledRuleses?.Select(ConvertToActivity);
-                return result?.Concat(scheduledRuleses?.Select(ConvertToActivityRollback))?.Where(x => x != null && x.ChaosCompletedTime != null && x.ChaosStartedTime != null && x.FinalState != null && x.InitialState != null && x.Status != null && x.ResourceName != null).OrderBy(x => x.ChaosCompletedTime).ThenBy(x => x.ChaosStartedTime);
+                //I have to check if rollback parameters are there if so append it to the result, later change these results according to sorting order
+                var schedule = scheduledRuleses?.Where(x => x != null && x.RollbackFinalState != x.RollbackInitialState);
+                var rollbackresults = schedule?.Select(ConvertToActivityRollback);
+                var results =  result?.Concat(rollbackresults);
+                */
+                /*var results = result?.Concat(scheduledRuleses?.Select(ConvertToActivityRollback)).Where(x => x != null && 
+                                                                                                             x.ChaosCompletedTime != null &&
+                                                                                                             x.ChaosStartedTime != null &&
+                                                                                                             x.FinalState != null &&
+                                                                                                             x.InitialState != null &&
+                                                                                                             x.Status != null &&
+                                                                                                             x.ResourceName != null).OrderByDescending(x => x.TFChaosCompletedTime);
+               */
+                /*results = results.ToList();
+                results = results.OrderByDescending(x => x.ChaosCompletedTime);
+                return results;
+                */
+                var entities = GetSchedulesByDateForActivities(fromDate, toDate);
+                var scheduledRuleses = entities.Select(ConvertToActivity);
+                List<Activities> activitieses = new List<Activities>();
+                activitieses.AddRange(scheduledRuleses);
+                var schedule = entities?.Where(x =>(x.Rolledback == false && x.RollbackExecutionStartTime != null)||(x.Rolledback == true));
+                var rollbackresults = schedule?.Select(ConvertToActivityRollback);
+                activitieses.AddRange(rollbackresults);
+                
+                activitieses.Sort((x, y) =>
+                {
+                    return (x.FIChaosStartedTime.Ticks).CompareTo(y.FIChaosStartedTime.Ticks)*(-1);
+                });
+                
+               return activitieses;
+                
+                ////x.ChaosStartedTime.CompareTo(y.ChaosStartedTime)
+                //return activitieses.OrderByDescending(x => x.FIChaosStartedTime);
+
+                //var results = scheduledRuleses?.Concat(rollbackresults);
+                //return results.OrderByDescending(x => x.TFChaosCompletedTime).ToList();
+
+                //return activitieses.OrderByDescending(x => x.FIChaosStartedTime.Ticks);
             }
             catch (Exception ex)
             {
@@ -487,6 +526,7 @@ namespace AzureFaultInjection.Controllers
 
             return new Schedules()
             {
+
                 ResourceName = scheduledRule.ResourceName,
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = scheduledRule.FiOperation,
@@ -501,6 +541,7 @@ namespace AzureFaultInjection.Controllers
 
             return new Activities()
             {
+                FIChaosStartedTime = scheduledRule.ExecutionStartTime.Value,
                 ResourceName = scheduledRule.ResourceName,
                 ChaosStartedTime = scheduledRule.ExecutionStartTime.HasValue ? scheduledRule.ExecutionStartTime.ToString() : null,
                 ChaosCompletedTime = scheduledRule.EventCompletedTime.HasValue ? scheduledRule.EventCompletedTime.ToString(): null,
@@ -516,18 +557,21 @@ namespace AzureFaultInjection.Controllers
 
         private static Activities ConvertToActivityRollback(ScheduledRules scheduledRule)
         {
-            if (scheduledRule.Rolledback == null || !scheduledRule.Rolledback.Value)
+            if (scheduledRule.Rolledback == null )
+            //|| !scheduledRule.Rolledback.Value
             {
                 return null;
             }
 
             return new Activities()
             {
+                //if(scheduledRule.ExecutionStartTime != null)
+                FIChaosStartedTime = scheduledRule.RollbackExecutionStartTime.Value,
                 ResourceName = scheduledRule.ResourceName,
                 ChaosStartedTime = scheduledRule.RollbackExecutionStartTime.HasValue
-                    ? scheduledRule.RollbackExecutionStartTime.Value.ToLocalTime().ToString()
+                    ? scheduledRule.RollbackExecutionStartTime.ToString()
                     : null,
-                ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue ? scheduledRule.RollbackEventCompletedTime.Value.ToLocalTime().ToString() : null,
+                ChaosCompletedTime = scheduledRule.RollbackEventCompletedTime.HasValue ? scheduledRule.RollbackEventCompletedTime.ToString() : null,
                 ChaosOperation = scheduledRule.FiOperation + " - " + ActionType.Start,
                 InitialState = scheduledRule.RollbackInitialState,
                 FinalState = scheduledRule.RollbackFinalState,
@@ -568,14 +612,57 @@ namespace AzureFaultInjection.Controllers
                 toDateTimeOffset = DateTimeOffset.ParseExact(toDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
                     System.Globalization.CultureInfo.InvariantCulture);
             }
-            
-           
-
             var result = ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
                 toDateTimeOffset.ToUniversalTime(),
                 "ScheduledExecutionTime",
                 StorageTableNames.ScheduledRulesTableName);
             return result?.OrderByDescending(x => x.ScheduledExecutionTime);
         }
+        private static IEnumerable<ScheduledRules> GetSchedulesByDateForActivities(string fromDate, string toDate)
+        {
+            //double fromDateSeconds = 86400;
+            //double toDateSeconds = 0;
+            /*if (!string.IsNullOrWhiteSpace(fromDate))
+            {
+                DateTime myFromDate = DateTime.ParseExact(fromDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+                fromDateSeconds = (DateTime.UtcNow - myFromDate).TotalSeconds;
+            }
+
+            if (!string.IsNullOrWhiteSpace(toDate))
+            {
+                DateTime myToDate = DateTime.ParseExact(toDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+                toDateSeconds = (DateTime.UtcNow - myToDate).TotalSeconds;
+            }
+            */
+        
+            DateTimeOffset fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
+            if (!string.IsNullOrWhiteSpace(fromDate))
+            {
+                fromDateTimeOffset = DateTimeOffset.ParseExact(fromDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            DateTimeOffset toDateTimeOffset = DateTimeOffset.UtcNow;
+            if (!string.IsNullOrWhiteSpace(toDate))
+            {
+                toDateTimeOffset = DateTimeOffset.ParseExact(toDate.Split('+')[0], "dd/MM/yyyy HH:mm:ss",
+                    System.Globalization.CultureInfo.InvariantCulture);
+            }
+            var result = ResourceFilterHelper.QueryByFromToDateForActivities<ScheduledRules>(fromDateTimeOffset.ToUniversalTime(),
+              toDateTimeOffset.ToUniversalTime(),
+              "ScheduledExecutionTime",
+            StorageTableNames.ScheduledRulesTableName);
+            
+            var results = result.Where(x => x != null &&
+                                        x.ExecutionStartTime != null &&
+                                        x.InitialState != null &&
+                                        x.ExecutionStatus != null &&
+                                        x.ResourceName != null); //x is SchedulesRules
+            return results?.OrderByDescending(x => x.ScheduledExecutionTime);
+            //return result?.OrderByDescending(x => x.ScheduledExecutionTime);
+        }
     }
+    
 }

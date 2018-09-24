@@ -1,4 +1,6 @@
-﻿namespace AzureChaos.Core.Models
+﻿using System;
+
+namespace AzureChaos.Core.Models
 {
     public class Activities
     {
@@ -12,5 +14,7 @@
         public string Warning { get; set; }
         public string Error { get; set; }
         public string Status { get; set; }
+        public DateTime FIChaosStartedTime { get; set; }
+        public DateTime TimeStamp { get; set; }
     }
 }

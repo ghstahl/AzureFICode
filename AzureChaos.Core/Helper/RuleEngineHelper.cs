@@ -58,7 +58,8 @@ namespace AzureChaos.Core.Helper
                 combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
             var localGUID = sessionId;// System.Guid.NewGuid().ToString();
-            return new ScheduledRules(localGUID, entity.RowKey)
+            var scheduleRule = new ScheduledRules(localGUID, entity.RowKey)
+            //return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilitySets.ToString(),
                 ScheduledExecutionTime = executionTime,
@@ -68,8 +69,14 @@ namespace AzureChaos.Core.Helper
                 TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilitySets.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = combinationKey,
-                Rolledback = false
+                //Rolledback = false
             };
+            if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString()))
+            {
+                scheduleRule.Rolledback = false;
+            }
+
+            return scheduleRule;
         }
 
         public static ScheduledRules ConvertToScheduledRuleEntityForAvailabilityZone<T>(T entity, string sessionId,
@@ -81,7 +88,8 @@ namespace AzureChaos.Core.Helper
             }
 
             var localGUID = sessionId;// System.Guid.NewGuid().ToString();
-            return new ScheduledRules(localGUID, entity.RowKey)
+            var scheduleRule = new ScheduledRules(localGUID, entity.RowKey)
+            //return new ScheduledRules(localGUID, entity.RowKey)
             {
                 ResourceType = VirtualMachineGroup.AvailabilityZones.ToString(),
                 ScheduledExecutionTime = executionTime,
@@ -91,8 +99,14 @@ namespace AzureChaos.Core.Helper
                 TriggerData = GetTriggerData(entity, action, localGUID, entity.RowKey, VirtualMachineGroup.AvailabilityZones.ToString()),
                 SchedulerSessionId = sessionId,
                 CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,
-                Rolledback = false
+                //Rolledback = false
             };
+            if (fiOperation.Equals(AzureFiOperation.PowerCycle.ToString()))
+            {
+                scheduleRule.Rolledback = false;
+            }
+
+            return scheduleRule;
         }
 
         public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action, string partitionKey, string rowKey, string guid)

@@ -55,16 +55,30 @@ namespace ChaosExecuter.Executer
                 bool isValidChaos = IsValidChaos(inputObject.Action, scaleSetVm.PowerState);
                 if (!isValidChaos)
                 {
-                    log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
+                    log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action + " for " + inputObject.ResourceId);
                     if (inputObject.EnableRollback)
                     {
                         scheduleRule.RollbackExecutionStatus = Status.Failed.ToString();
-                        scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                        if (inputObject.Action == "Restart")
+                        {
+                            scheduleRule.RollbackWarning = Warnings.RestartOnStop;
+                        }
+                        else
+                        {
+                            scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                        }
                     }
                     else
                     {
                         scheduleRule.ExecutionStatus = Status.Failed.ToString();
-                        scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                        if (inputObject.Action == "Restart")
+                        {
+                            scheduleRule.RollbackWarning = Warnings.RestartOnStop;
+                        }
+                        else
+                        {
+                            scheduleRule.RollbackWarning = Warnings.ActionAndStateAreSame;
+                        }
                     }
 
                     StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
@@ -97,6 +111,10 @@ namespace ChaosExecuter.Executer
                         scheduleRule.EventCompletedTime = DateTime.UtcNow;
                         scheduleRule.FinalState = scaleSetVm.PowerState.Value;
                         scheduleRule.ExecutionStatus = Status.Completed.ToString();
+                        if (scheduleRule.FiOperation == "Restart")
+                        {
+                            scheduleRule.Rolledback = null;
+                        }
                     }
                 }
 
@@ -192,7 +210,7 @@ namespace ChaosExecuter.Executer
                 case ActionType.Stop:
                 case ActionType.PowerOff:
                 case ActionType.Restart:
-                    return state != PowerState.Stopping && state != PowerState.Stopped;
+                    return state != PowerState.Stopping && state != PowerState.Stopped && state != PowerState.Deallocated;
 
                 default:
                     return false;

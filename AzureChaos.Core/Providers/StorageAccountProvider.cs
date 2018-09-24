@@ -75,7 +75,6 @@ namespace AzureChaos.Core.Providers
                 var token = continuationToken;
                 var result = table.ExecuteQuerySegmented(query, token);
                 results = results?.Concat(result.Results) ?? result;
-
                 continuationToken = result.ContinuationToken;
             }
             while (continuationToken != null);
